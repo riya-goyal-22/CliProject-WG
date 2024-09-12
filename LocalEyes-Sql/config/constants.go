@@ -1,4 +1,4 @@
-package constants
+package config
 
 const (
 	Reset   = "\033[0m"
@@ -9,9 +9,7 @@ const (
 	Magenta = "\033[35m"
 	Cyan    = "\033[36m"
 	Gray    = "\033[37m"
-	//DBUser     = "root"
-	//DBPassword = "mySql"
-	//DBName     = "localeyes"
-	//DBHost     = "localhost"
-	//DBPort     = "3306"
+	UserTable="users"
+	PostTable="posts"
+	QuestionTable="questions"
 )

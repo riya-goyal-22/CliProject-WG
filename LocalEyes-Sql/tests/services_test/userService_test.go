@@ -3,7 +3,7 @@ package services_test
 import (
 	"database/sql"
 	"errors"
-	"localEyes/constants"
+	"localEyes/config"
 	"localEyes/internal/models"
 	"localEyes/internal/services"
 	"localEyes/tests/mocks"
@@ -76,14 +76,14 @@ func TestUserService_Login(t *testing.T) {
 			"testuser", "password",
 			nil,
 			errors.New("invalid credentials"),
-			constants.Red + "Invalid Account credentials" + constants.Reset,
+			config.Red + "Invalid Account credentials" + config.Reset,
 		},
 		{
 			"Login Inactive Account",
 			"testuser", "password",
 			&models.User{Username: "testuser", Password: services.HashPassword("password"), IsActive: false},
 			nil,
-			constants.Red + "InActive Account" + constants.Reset,
+			config.Red + "InActive Account" + config.Reset,
 		},
 	}
 

@@ -1,11 +1,11 @@
 //go:build !test
 // +build !test
 
-package cli
+package ui
 
 import (
 	"fmt"
-	"localEyes/constants"
+	"localEyes/config"
 	"localEyes/internal/services"
 	"localEyes/utils"
 )
@@ -13,37 +13,37 @@ import (
 func openPost(questionService *services.QuestionService, postService *services.PostService, PId, UId int) {
 	boolVal, err := postService.PostIdExist(PId)
 	if err != nil {
-		fmt.Println(constants.Red + err.Error() + constants.Reset)
+		fmt.Println(config.Red + err.Error() + config.Reset)
 	}
 	if !boolVal {
-		fmt.Println(constants.Red + "Post Id does not exist" + constants.Reset)
+		fmt.Println(config.Red + "Post Id does not exist" + config.Reset)
 		return
 	}
 
 	for {
-		fmt.Println(constants.Blue + "\n1.Add Question")
+		fmt.Println(config.Blue + "\n1.Add Question")
 		fmt.Println("2.Answer a Question")
 		fmt.Println("3.View Questions")
 		fmt.Println("4.Delete Question")
-		fmt.Println("5 Return" + constants.Reset)
+		fmt.Println("5 Return" + config.Reset)
 		choice := utils.GetChoice()
 		switch choice {
 		case 1:
 			text := utils.PromptInput("Enter your Question:")
 			err := questionService.AskQuestion(UId, PId, text)
 			if err != nil {
-				fmt.Println(constants.Red + "Error Adding question:" + err.Error() + constants.Reset)
+				fmt.Println(config.Red + "Error Adding question:" + err.Error() + config.Reset)
 			} else {
-				fmt.Println(constants.Green + "Question added" + constants.Reset)
+				fmt.Println(config.Green + "Question added" + config.Reset)
 			}
 		case 2:
 			QId, err := utils.PromptIntInput("Enter QId:")
 			answer := utils.PromptInput("Enter your answer:")
 			err = questionService.AddAnswer(QId, answer)
 			if err != nil {
-				fmt.Println(constants.Red + "Error Adding answer:" + err.Error() + constants.Reset)
+				fmt.Println(config.Red + "Error Adding answer:" + err.Error() + config.Reset)
 			} else {
-				fmt.Println(constants.Green + "Answer added" + constants.Reset)
+				fmt.Println(config.Green + "Answer added" + config.Reset)
 			}
 		case 3:
 			questions, err := questionService.GetPostQuestions(PId)
@@ -62,14 +62,14 @@ func openPost(questionService *services.QuestionService, postService *services.P
 			QId, err := utils.PromptIntInput("Enter Question Id to delete:")
 			err = questionService.DeleteUserQues(UId, QId)
 			if err != nil {
-				fmt.Println(constants.Red + "Error deleting question:" + err.Error() + constants.Reset)
+				fmt.Println(config.Red + "Error deleting question:" + err.Error() + config.Reset)
 			} else {
-				fmt.Println(constants.Green + "Question deleted" + constants.Reset)
+				fmt.Println(config.Green + "Question deleted" + config.Reset)
 			}
 		case 5:
 			return
 		default:
-			fmt.Println(constants.Red + "Invalid Choice" + constants.Reset)
+			fmt.Println(config.Red + "Invalid Choice" + config.Reset)
 		}
 	}
 }

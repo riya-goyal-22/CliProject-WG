@@ -6,7 +6,7 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/assert"
-	"localEyes/constants"
+	"localEyes/config"
 	"localEyes/internal/models"
 	"localEyes/internal/repositories"
 	"testing"
@@ -148,7 +148,7 @@ func TestDeleteByQIdUId(t *testing.T) {
 			name:          "no rows affected",
 			qId:           2,
 			uId:           2,
-			expectedError: errors.New(constants.Red + "No Question exist with this id" + constants.Reset),
+			expectedError: errors.New(config.Red + "No Question exist with this id" + config.Reset),
 			affectedRows:  0,
 			mockExpectation: func() {
 				mock.ExpectExec("DELETE FROM questions WHERE q_id = \\? AND user_id = \\?").
@@ -235,7 +235,7 @@ func TestUpdateQuestion_NoRowsAffected(t *testing.T) {
 
 	// Assert
 	assert.Error(t, err)
-	assert.Equal(t, constants.Red+"No Question exist with this id"+constants.Reset, err.Error())
+	assert.Equal(t, config.Red+"No Question exist with this id"+config.Reset, err.Error())
 	mock.ExpectationsWereMet()
 }
 
@@ -302,7 +302,7 @@ func TestDeleteByPId_NoRowsAffected(t *testing.T) {
 	err = repo.DeleteByPId(PId)
 
 	// Assert results
-	assert.EqualError(t, err, constants.Red+"No Question exist with this id"+constants.Reset)
+	assert.EqualError(t, err, config.Red+"No Question exist with this id"+config.Reset)
 }
 
 func TestDeleteByPId_Error(t *testing.T) {
@@ -362,7 +362,7 @@ func TestDeleteByQId_NoRowsAffected(t *testing.T) {
 	err = repo.DeleteByQId(QId)
 
 	// Assert results
-	assert.EqualError(t, err, constants.Red+"No Question exist with this id"+constants.Reset)
+	assert.EqualError(t, err, config.Red+"No Question exist with this id"+config.Reset)
 }
 
 func TestDeleteByQId_Error(t *testing.T) {

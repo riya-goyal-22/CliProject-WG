@@ -1,13 +1,13 @@
 //go:build !test
 // +build !test
 
-package cli
+package ui
 
 import (
 	"errors"
 	"fmt"
 	"github.com/manifoldco/promptui"
-	"localEyes/constants"
+	"localEyes/config"
 	"localEyes/internal/services"
 	"localEyes/utils"
 	"log"
@@ -16,21 +16,21 @@ import (
 )
 
 func signUp(userService *services.UserService) {
-	fmt.Println(constants.Blue + "==============================")
+	fmt.Println(config.Blue + "==============================")
 	fmt.Println("SIGN UP")
-	fmt.Println("==============================" + constants.Reset)
+	fmt.Println("==============================" + config.Reset)
 	var tag, username, password string
 	for {
 		username = utils.PromptInput("Enter your username:")
 		if utils.ValidateUsername(username, userService.Repo) {
 			break
 		} else {
-			fmt.Println(constants.Red + "Username already taken" + constants.Reset)
+			fmt.Println(config.Red + "Username already taken" + config.Reset)
 		}
 	}
 	for {
 		prompt := &promptui.Prompt{
-			Label:     constants.Cyan + "Enter a strong password [6 characters long ,having special character and number]" + constants.Reset,
+			Label:     config.Cyan + "Enter a strong password [6 characters long ,having special character and number]" + config.Reset,
 			Mask:      '*',
 			IsConfirm: false,
 		}
@@ -38,11 +38,11 @@ func signUp(userService *services.UserService) {
 		if utils.ValidatePassword(password) {
 			break
 		} else {
-			fmt.Println(constants.Red + "Password is weak" + constants.Reset)
+			fmt.Println(config.Red + "Password is weak" + config.Reset)
 		}
 	}
 	if city := utils.PromptInput("Enter your city:"); strings.ToLower(city) != "delhi" {
-		err := errors.New(constants.Red + "You are not a vaid user for this application" + constants.Reset)
+		err := errors.New(config.Red + "You are not a vaid user for this application" + config.Reset)
 		log.Fatal(err)
 	}
 	DwellingAge, _ := strconv.Atoi(utils.PromptInput("For how many years you are living here/lived here:"))
@@ -53,9 +53,9 @@ func signUp(userService *services.UserService) {
 	}
 	err := userService.Signup(username, password, DwellingAge, tag)
 	if err != nil {
-		fmt.Println(constants.Red + "Error Signing Up\n" + err.Error() + constants.Reset)
+		fmt.Println(config.Red + "Error Signing Up\n" + err.Error() + config.Reset)
 		return
 	} else {
-		fmt.Println("\n" + constants.Green + "Successfully Signed Up!\n" + constants.Reset)
+		fmt.Println("\n" + config.Green + "Successfully Signed Up!\n" + config.Reset)
 	}
 }

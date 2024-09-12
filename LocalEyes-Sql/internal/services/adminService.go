@@ -2,7 +2,7 @@ package services
 
 import (
 	"errors"
-	"localEyes/constants"
+	"localEyes/config"
 	"localEyes/internal/interfaces"
 	"localEyes/internal/models"
 )
@@ -21,7 +21,7 @@ func (s *AdminService) Login(password string) (*models.Admin, error) {
 	hashedPassword := HashPassword(password)
 	user, err := s.UserRepo.FindAdminByUsernamePassword("admin", hashedPassword)
 	if err != nil {
-		return nil, errors.New(constants.Red + "Invalid username or password" + constants.Reset)
+		return nil, errors.New(config.Red + "Invalid username or password" + config.Reset)
 	}
 	return user, nil
 }

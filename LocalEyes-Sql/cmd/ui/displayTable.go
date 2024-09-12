@@ -1,7 +1,7 @@
 //go:build !test
 // +build !test
 
-package cli
+package ui
 
 import (
 	"github.com/olekukonko/tablewriter"
@@ -17,13 +17,13 @@ func displayUsers(users []*models.User) {
 
 	// Add rows to the table, only including Name and City
 	for _, user := range users {
-		UIdStr := strconv.Itoa(user.UId)
-		Dwelling := strconv.Itoa(user.DwellingAge)
+		uIdStr := strconv.Itoa(user.UId)
+		dwelling := strconv.Itoa(user.DwellingAge)
 		activeStatus := "No"
 		if user.IsActive {
 			activeStatus = "Yes"
 		}
-		table.Append([]string{UIdStr, user.Username, user.City, Dwelling, activeStatus, user.Tag})
+		table.Append([]string{uIdStr, user.Username, user.City, dwelling, activeStatus, user.Tag})
 	}
 
 	// Render the table
@@ -36,10 +36,10 @@ func displayPosts(posts []*models.Post) {
 
 	// Add rows to the table, only including Name and City
 	for _, post := range posts {
-		PIdStr := strconv.Itoa(post.PostId)
-		Likes := strconv.Itoa(post.Likes)
-		Time := post.CreatedAt.Format("2006-01-02 15:04:05")
-		table.Append([]string{PIdStr, post.Title, post.Type, post.Content, Likes, Time})
+		pIdStr := strconv.Itoa(post.PostId)
+		likes := strconv.Itoa(post.Likes)
+		time := post.CreatedAt.Format("2006-01-02 15:04:05")
+		table.Append([]string{pIdStr, post.Title, post.Type, post.Content, likes, time})
 	}
 
 	// Render the table
@@ -52,10 +52,10 @@ func displayQuestions(questions []*models.Question) {
 
 	// Add rows to the table, only including Name and City
 	for _, question := range questions {
-		QIdStr := strconv.Itoa(question.QId)
-		Time := question.CreatedAt.Format("2006-01-02 15:04:05")
-		Replies := strings.Join(question.Replies, ", ")
-		table.Append([]string{QIdStr, question.Text, Replies, Time})
+		qIdStr := strconv.Itoa(question.QId)
+		time := question.CreatedAt.Format("2006-01-02 15:04:05")
+		replies := strings.Join(question.Replies, ", ")
+		table.Append([]string{qIdStr, question.Text, replies, time})
 	}
 	// Render the table
 	table.Render()

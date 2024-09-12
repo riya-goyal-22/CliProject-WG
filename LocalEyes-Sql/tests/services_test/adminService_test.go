@@ -2,7 +2,7 @@ package services_test
 
 import (
 	"errors"
-	"localEyes/constants"
+	"localEyes/config"
 	"localEyes/internal/models"
 	"localEyes/internal/services"
 	"localEyes/tests/mocks"
@@ -53,7 +53,7 @@ func TestAdminService_Login_InvalidPassword(t *testing.T) {
 
 	admin, err := adminService.Login(password)
 	assert.Error(t, err)
-	assert.Equal(t, constants.Red+"Invalid username or password"+constants.Reset, err.Error())
+	assert.Equal(t, config.Red+"Invalid username or password"+config.Reset, err.Error())
 	assert.Nil(t, admin)
 }
 

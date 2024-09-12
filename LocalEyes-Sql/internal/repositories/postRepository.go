@@ -4,8 +4,9 @@ import (
 	"database/sql"
 	"errors"
 	_ "github.com/go-sql-driver/mysql"
-	"localEyes/constants"
+	"localEyes/config"
 	"localEyes/internal/models"
+	"localEyes/utils"
 	"time"
 )
 
@@ -20,18 +21,27 @@ func NewMySQLPostRepository(Db *sql.DB) *MySQLPostRepository {
 }
 
 func (r *MySQLPostRepository) Create(post *models.Post) error {
-	query := "INSERT INTO posts (user_id, title,type, content, likes,created_at) VALUES (?, ?, ?, ?, ?,?)"
+	columns := []string{"user_id", "title", "type", "content", "likes", "created_at"}
+	query := config.InsertQuery(config.PostTable, columns)
+	//query := "INSERT INTO posts (user_id, title,type, content, likes,created_at) VALUES (?, ?, ?, ?, ?,?)"
 	_, err := r.DB.Exec(query, post.UId, post.Title, post.Type, post.Content, post.Likes, post.CreatedAt)
 	return err
 }
 
 func (r *MySQLPostRepository) GetAllPosts() ([]*models.Post, error) {
-	query := "SELECT post_id, user_id, title, type, content, likes, created_at FROM posts"
+	columns := []string{"post_id", "user_id", "title", "type", "content", "likes", "created_at"}
+	query := config.SelectQuery(config.PostTable, "", "", columns)
+	//query := "SELECT post_id, user_id, title, type, content, likes, created_at FROM posts"
 	rows, err := r.DB.Query(query)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func(rows *sql.Rows) {
+		err := rows.Close()
+		if err != nil {
+			utils.Logger.Println("ERROR : Error closing rows:", err)
+		}
+	}(rows)
 
 	var posts []*models.Post
 	for rows.Next() {
@@ -54,7 +64,9 @@ func (r *MySQLPostRepository) GetAllPosts() ([]*models.Post, error) {
 }
 
 func (r *MySQLPostRepository) DeleteByPId(PId int) error {
-	query := "DELETE FROM posts WHERE post_id = ?"
+	condition1 := "post_id"
+	query := config.DeleteQuery(config.PostTable, condition1, "")
+	//query := "DELETE FROM posts WHERE post_id = ?"
 	result, err := r.DB.Exec(query, PId)
 	if result != nil {
 		affectedRows, err := result.RowsAffected()
@@ -62,14 +74,17 @@ func (r *MySQLPostRepository) DeleteByPId(PId int) error {
 			return err
 		}
 		if affectedRows == 0 {
-			return errors.New(constants.Red + "No Post exist with this id" + constants.Reset)
+			return errors.New(config.Red + "No Post exist with this id" + config.Reset)
 		}
 	}
 	return err
 }
 
 func (r *MySQLPostRepository) DeleteByUIdPId(UId, PId int) error {
-	query := "DELETE FROM posts WHERE post_id = ? AND user_id=?"
+	condition1 := "post_id"
+	condition2 := "user_id"
+	query := config.DeleteQuery(config.PostTable, condition1, condition2)
+	//query := "DELETE FROM posts WHERE post_id = ? AND user_id=?"
 	result, err := r.DB.Exec(query, PId, UId)
 	if result != nil {
 		affectedRows, err := result.RowsAffected()
@@ -77,25 +92,35 @@ func (r *MySQLPostRepository) DeleteByUIdPId(UId, PId int) error {
 			return err
 		}
 		if affectedRows == 0 {
-			return errors.New(constants.Red + "No Post exist with this id" + constants.Reset)
+			return errors.New(config.Red + "No Post exist with this id" + config.Reset)
 		}
 	}
 	return err
 }
 
 func (r *MySQLPostRepository) DeleteByUId(UId int) error {
-	query := "DELETE FROM posts WHERE user_id = ?"
+	condition1 := "user_id"
+	query := config.DeleteQuery(config.PostTable, condition1, "")
+	//query := "DELETE FROM posts WHERE user_id = ?"
 	_, err := r.DB.Exec(query, UId)
 	return err
 }
 
 func (r *MySQLPostRepository) GetPostsByFilter(filter string) ([]*models.Post, error) {
-	query := "SELECT post_id, user_id, title,type, content, likes,created_at FROM posts WHERE type = ?"
+	columns := []string{"post_id", "user_id", "title", "type", "content", "likes", "created_at"}
+	condition1 := "type"
+	query := config.SelectQuery(config.PostTable, condition1, "", columns)
+	//query := "SELECT post_id, user_id, title,type, content, likes,created_at FROM posts WHERE type = ?"
 	rows, err := r.DB.Query(query, filter)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func(rows *sql.Rows) {
+		err := rows.Close()
+		if err != nil {
+			utils.Logger.Println("ERROR: Error closing rows:", err)
+		}
+	}(rows)
 
 	var posts []*models.Post
 	for rows.Next() {
@@ -118,12 +143,20 @@ func (r *MySQLPostRepository) GetPostsByFilter(filter string) ([]*models.Post, e
 }
 
 func (r *MySQLPostRepository) GetPostsByUId(UId int) ([]*models.Post, error) {
-	query := "SELECT post_id, user_id, title,type, content, likes,created_at FROM posts WHERE user_id = ?"
+	condition1 := "user_id"
+	columns := []string{"post_id", "user_id", "title", "type", "content", "likes", "created_at"}
+	query := config.SelectQuery(config.PostTable, condition1, "", columns)
+	//query := "SELECT post_id, user_id, title,type, content, likes,created_at FROM posts WHERE user_id = ?"
 	rows, err := r.DB.Query(query, UId)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func(rows *sql.Rows) {
+		err = rows.Close()
+		if err != nil {
+			utils.Logger.Println("ERROR : Error closing rows:", err)
+		}
+	}(rows)
 
 	var posts []*models.Post
 	for rows.Next() {
@@ -138,12 +171,20 @@ func (r *MySQLPostRepository) GetPostsByUId(UId int) ([]*models.Post, error) {
 }
 
 func (r *MySQLPostRepository) GetPostsByPId(PId int) ([]*models.Post, error) {
-	query := "SELECT post_id, user_id, title,type, content, likes,created_at FROM posts WHERE post_id = ?"
+	columns := []string{"post_id", "user_id", "title", "type", "content", "likes", "created_at"}
+	condition1 := "post_id"
+	query := config.SelectQuery(config.PostTable, condition1, "", columns)
+	//query := "SELECT post_id, user_id, title,type, content, likes,created_at FROM posts WHERE post_id = ?"
 	rows, err := r.DB.Query(query, PId)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func(rows *sql.Rows) {
+		err = rows.Close()
+		if err != nil {
+			utils.Logger.Println("ERROR : Error closing rows:", err)
+		}
+	}(rows)
 
 	var posts []*models.Post
 	for rows.Next() {
@@ -158,7 +199,11 @@ func (r *MySQLPostRepository) GetPostsByPId(PId int) ([]*models.Post, error) {
 }
 
 func (r *MySQLPostRepository) UpdateUserPost(PId, UId int, title, content string) error {
-	query := "UPDATE posts SET title = ?, content = ? WHERE post_id = ? AND user_id = ?"
+	columns := []string{"title", "content"}
+	condition1 := "post_id"
+	condition2 := "user_id"
+	query := config.UpdateQuery(config.PostTable, condition1, condition2, columns)
+	//query := "UPDATE posts SET title = ?, content = ? WHERE post_id = ? AND user_id = ?"
 	result, err := r.DB.Exec(query, title, content, PId, UId)
 	if result != nil {
 		rowsAffected, err := result.RowsAffected()
@@ -166,14 +211,17 @@ func (r *MySQLPostRepository) UpdateUserPost(PId, UId int, title, content string
 			return err
 		}
 		if rowsAffected == 0 {
-			return errors.New(constants.Red + "You can only update your post" + constants.Reset)
+			return errors.New(config.Red + "You can only update your post" + config.Reset)
 		}
 	}
 	return err
 }
 
 func (r *MySQLPostRepository) UpdateLike(PId int) error {
-	query := "UPDATE posts SET likes = likes + 1 WHERE post_id = ?"
+	columns := "likes=likes+1"
+	condition1 := "post_id=?"
+	query := config.UpdateQueryWithValue(config.PostTable, condition1, "", columns)
+	//query := "UPDATE posts SET likes = likes+1 WHERE post_id = ?"
 	result, err := r.DB.Exec(query, PId)
 	if result != nil {
 		rowsAffected, err := result.RowsAffected()
@@ -181,7 +229,7 @@ func (r *MySQLPostRepository) UpdateLike(PId int) error {
 			return err
 		}
 		if rowsAffected == 0 {
-			return errors.New(constants.Red + "No post exist with this id" + constants.Reset)
+			return errors.New(config.Red + "No post exist with this id" + config.Reset)
 		}
 	}
 	return err

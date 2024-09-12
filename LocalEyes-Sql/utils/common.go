@@ -3,7 +3,7 @@ package utils
 import (
 	"bufio"
 	"fmt"
-	"localEyes/constants"
+	"localEyes/config"
 	"localEyes/internal/interfaces"
 	"os"
 	"strconv"
@@ -15,7 +15,7 @@ func PromptInput(prompt string) string {
 	scanner := bufio.NewScanner(os.Stdin)
 
 	// Display the prompt message
-	fmt.Print(constants.Cyan + prompt + constants.Reset)
+	fmt.Print(config.Cyan + prompt + config.Reset)
 
 	// Read the next line of input
 	scanner.Scan()
@@ -35,7 +35,7 @@ func GetChoice() int {
 
 func PromptIntInput(prompt string) (int, error) {
 	scanner := bufio.NewScanner(os.Stdin)
-	fmt.Print(constants.Cyan + prompt + constants.Reset)
+	fmt.Print(config.Cyan + prompt + config.Reset)
 	scanner.Scan()
 	input := scanner.Text()
 	//if err := scanner.Err(); err != nil {

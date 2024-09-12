@@ -1,0 +1,11 @@
+
+2024/09/12 09:41:47 managePost.go:130: INFO: Post created: food
+2024/09/12 09:41:47 managePost.go:133: ERROR: Error UnNotifying user: Error 3140 (22032): Invalid JSON text: "Invalid value." at position 0 in value for column 'users.notification'.
+2024/09/12 09:47:01 managePost.go:130: INFO: Post created: new postt
+2024/09/12 09:50:31 managePost.go:146: INFO: Post created: hellooo
+2024/09/12 09:53:52 adminLogin.go:49: INFO:Admin viewed all users
+2024/09/12 09:56:55 login.go:69: INFO: User Deactivated with id- 2
+2024/09/12 10:04:43 managePost.go:130: INFO: Post created: x
+2024/09/12 10:04:53 managePost.go:130: INFO: Post created: hii
+2024/09/12 10:13:05 adminLogin.go:49: INFO:Admin viewed all users
+2024/09/12 10:13:14 adminLogin.go:101: INFO:Admin activated user with id- 2

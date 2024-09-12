@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"errors"
-	"localEyes/constants"
+	"localEyes/config"
 	"localEyes/internal/interfaces"
 	"localEyes/internal/models"
 )
@@ -40,11 +40,11 @@ func (s *UserService) Login(Username, password string) (*models.User, error) {
 	user, err := s.Repo.FindByUsernamePassword(Username, hashedPassword)
 	//user.NotifyChannel = make(chan string, 5)
 	if err != nil {
-		return nil, errors.New(constants.Red + "Invalid Account credentials" + constants.Reset)
+		return nil, errors.New(config.Red + "Invalid Account credentials" + config.Reset)
 	} else if user == nil {
-		return nil, errors.New(constants.Red + "Invalid Account credentials" + constants.Reset)
+		return nil, errors.New(config.Red + "Invalid Account credentials" + config.Reset)
 	} else if user.IsActive == false {
-		return nil, errors.New(constants.Red + "InActive Account" + constants.Reset)
+		return nil, errors.New(config.Red + "InActive Account" + config.Reset)
 	}
 	return user, nil
 }

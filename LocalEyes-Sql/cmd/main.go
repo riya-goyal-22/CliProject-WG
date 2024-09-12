@@ -1,6 +1,3 @@
-//go:build !test
-// +build !test
-
 package main
 
 import (
@@ -8,65 +5,39 @@ import (
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/joho/godotenv"
-	"localEyes/cmd/cli"
+	"localEyes/cmd/ui"
+	"localEyes/config"
 	"localEyes/internal/repositories"
 	"localEyes/internal/services"
+	"localEyes/utils"
 	"log"
-	"os"
-	"sync"
-	"time"
 )
 
 var dbClient *sql.DB
-var once sync.Once
 
 func init() {
 	err := godotenv.Load("../config.env")
 	if err != nil {
 		log.Fatal("Error loading .env file", err)
 	}
-	GetSQLClient()
-	dbClient.SetConnMaxLifetime(time.Hour * 1)
+	dbClient = config.GetSQLClient()
+	utils.InitLoggerFile()
 }
 
 func main() {
-	userRepo := repositories.NewMySQLUserRepository(dbClient)
-	userService := services.NewUserService(userRepo)
+	defer config.CloseDBClient()
+	defer utils.CloseLoggerFile()
+	userService := services.NewUserService(repositories.NewMySQLUserRepository(dbClient))
 
-	postRepo := repositories.NewMySQLPostRepository(dbClient)
-	postService := services.NewPostService(postRepo)
+	postService := services.NewPostService(repositories.NewMySQLPostRepository(dbClient))
 
-	questionRepo := repositories.NewMySQLQuestionRepository(dbClient)
-	questionService := services.NewQuestionService(questionRepo)
+	questionService := services.NewQuestionService(repositories.NewMySQLQuestionRepository(dbClient))
 
-	adminService := services.NewAdminService(userRepo, postRepo, questionRepo)
+	adminService := services.NewAdminService(repositories.NewMySQLUserRepository(dbClient),
+		repositories.NewMySQLPostRepository(dbClient),
+		repositories.NewMySQLQuestionRepository(dbClient))
 
-	cli.RootCli(userService, postService, questionService, adminService)
-}
+	ui.RootCli(userService, postService, questionService, adminService)
 
-func GetSQLClient() {
-	once.Do(func() {
-		dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true",
-			//constants.DBUser,
-			//constants.DBPassword,
-			//constants.DBHost,
-			//constants.DBPort,
-			//constants.DBName,
-			os.Getenv("DBUser"),
-			os.Getenv("DBPassword"),
-			os.Getenv("DBHost"),
-			os.Getenv("DBPort"),
-			os.Getenv("DBName"),
-		)
-		db, err := sql.Open("mysql", dsn)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		if err := db.Ping(); err != nil {
-			log.Fatal(err)
-		}
-
-		dbClient = db
-	})
+	fmt.Println(config.Magenta + "Thank you 😊, Visit Again" + config.Reset)
 }

@@ -4,9 +4,11 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	_ "github.com/go-sql-driver/mysql"
-	"localEyes/constants"
+	"localEyes/config"
 	"localEyes/internal/models"
+	"localEyes/utils"
 	"time"
 )
 
@@ -22,18 +24,27 @@ func NewMySQLQuestionRepository(Db *sql.DB) *MySQLQuestionRepository {
 
 func (r *MySQLQuestionRepository) Create(question *models.Question) error {
 	replies, err := json.Marshal(question.Replies)
-	query := "INSERT INTO questions (post_id,user_id, text, replies,created_at) VALUES (?, ?, ?, ?,?)"
+	columns:=[]string{"post_id","user_id", "text", "replies","created_at"}
+	query:=config.InsertQuery(config.QuestionTable,columns)
+	//query := "INSERT INTO questions (post_id,user_id, text, replies,created_at) VALUES (?, ?, ?, ?,?)"
 	_, err = r.DB.Exec(query, question.PostId, question.UserId, question.Text, replies, question.CreatedAt)
 	return err
 }
 
 func (r *MySQLQuestionRepository) GetAllQuestions() ([]*models.Question, error) {
-	query := "SELECT q_id, post_id, user_id, text, replies, created_at FROM questions"
+	columns:=[]string{"q_id","post_id","user_id","text","replies","created_at"}
+	query:=config.SelectQuery(config.QuestionTable,"","",columns)
+	//query := "SELECT q_id, post_id, user_id, text, replies, created_at FROM questions"
 	rows, err := r.DB.Query(query)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func(rows *sql.Rows) {
+		err := rows.Close()
+		if err != nil {
+			utils.Logger.Println("ERROR: Error closing rows:", err)
+		}
+	}(rows)
 
 	var questions []*models.Question
 	for rows.Next() {
@@ -64,7 +75,10 @@ func (r *MySQLQuestionRepository) GetAllQuestions() ([]*models.Question, error) 
 	return questions, nil
 }
 func (r *MySQLQuestionRepository) DeleteByQIdUId(QId, UId int) error {
-	query := "DELETE FROM questions WHERE q_id = ? AND user_id = ?"
+	condition1:="q_id"
+	condition2:="user_id"
+	query:=config.DeleteQuery(config.QuestionTable,condition1,condition2)
+	//query := "DELETE FROM questions WHERE q_id = ? AND user_id = ?"
 	result, err := r.DB.Exec(query, QId, UId)
 	if result != nil {
 		affectedRows, err := result.RowsAffected()
@@ -72,13 +86,15 @@ func (r *MySQLQuestionRepository) DeleteByQIdUId(QId, UId int) error {
 			return err
 		}
 		if affectedRows == 0 {
-			return errors.New(constants.Red + "No Question exist with this id" + constants.Reset)
+			return errors.New(config.Red + "No Question exist with this id" + config.Reset)
 		}
 	}
 	return err
 }
 func (r *MySQLQuestionRepository) DeleteByPId(PId int) error {
-	query := "DELETE FROM questions WHERE post_id = ?"
+	condition1:="post_id"
+	query:=config.DeleteQuery(config.QuestionTable,condition1,"")
+	//query := "DELETE FROM questions WHERE post_id = ?"
 	result, err := r.DB.Exec(query, PId)
 	if result != nil {
 		affectedRows, err := result.RowsAffected()
@@ -86,13 +102,15 @@ func (r *MySQLQuestionRepository) DeleteByPId(PId int) error {
 			return err
 		}
 		if affectedRows == 0 {
-			return errors.New(constants.Red + "No Question exist with this id" + constants.Reset)
+			return errors.New(config.Red + "No Question exist with this id" + config.Reset)
 		}
 	}
 	return err
 }
 func (r *MySQLQuestionRepository) DeleteByQId(QId int) error {
-	query := "DELETE FROM questions WHERE q_id = ?"
+	condition1:="q_id"
+	query:=config.DeleteQuery(config.QuestionTable,condition1,"")
+	//query := "DELETE FROM questions WHERE q_id = ?"
 	result, err := r.DB.Exec(query, QId)
 	if result != nil {
 		affectedRows, err := result.RowsAffected()
@@ -100,13 +118,16 @@ func (r *MySQLQuestionRepository) DeleteByQId(QId int) error {
 			return err
 		}
 		if affectedRows == 0 {
-			return errors.New(constants.Red + "No Question exist with this id" + constants.Reset)
+			return errors.New(config.Red + "No Question exist with this id" + config.Reset)
 		}
 	}
 	return err
 }
 func (r *MySQLQuestionRepository) GetQuestionsByPId(PId int) ([]*models.Question, error) {
-	query := "SELECT q_id, post_id,user_id, text, replies ,created_at FROM questions WHERE post_id = ?"
+	columns:=[]string{"q_id","post_id","user_id","text","replies","created_at"}
+	condition1:="post_id"
+	query:=config.SelectQuery(config.QuestionTable,condition1,"",columns)
+	//query := "SELECT q_id, post_id,user_id, text, replies ,created_at FROM questions WHERE post_id = ?"
 	rows, err := r.DB.Query(query, PId)
 	if err != nil {
 		return nil, err
@@ -120,21 +141,27 @@ func (r *MySQLQuestionRepository) GetQuestionsByPId(PId int) ([]*models.Question
 		if err := rows.Scan(&question.QId, &question.PostId, &question.UserId, &question.Text, &replies, &question.CreatedAt); err != nil {
 			return nil, err
 		}
-		json.Unmarshal(replies, &question.Replies)
+		err = json.Unmarshal(replies, &question.Replies)
+		if err != nil {
+			return nil, err
+		}
 		questions = append(questions, &question)
 	}
 	return questions, nil
 }
 func (r *MySQLQuestionRepository) UpdateQuestion(QId int, answer string) error {
-	query := "UPDATE questions SET replies= JSON_ARRAY_APPEND(replies, '$' ,?) WHERE q_id = ?"
-	result, err := r.DB.Exec(query, answer, QId)
+	columns:=[]string{"replies"}
+	condition1:="q_id"
+	query:=config.UpdateQuery(config.QuestionTable,condition1,"",columns)
+	//query := "UPDATE questions SET replies= JSON_ARRAY_APPEND(replies, '$' ,?) WHERE q_id = ?"
+	result, err := r.DB.Exec(query, fmt.Sprintf("JSON_ARRAY_APPEND(replies, '$' ,%s)",answer), QId)
 	if result != nil {
 		affectedRows, err := result.RowsAffected()
 		if err != nil {
 			return err
 		}
 		if affectedRows == 0 {
-			return errors.New(constants.Red + "No Question exist with this id" + constants.Reset)
+			return errors.New(config.Red + "No Question exist with this id" + config.Reset)
 		}
 	}
 	return err

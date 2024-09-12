@@ -5,7 +5,7 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/assert"
-	"localEyes/constants"
+	"localEyes/config"
 	"localEyes/internal/models"
 	"localEyes/internal/repositories"
 	"testing"
@@ -88,7 +88,7 @@ func TestMySQLPostRepository_DeleteByPId_NoRowsAffected(t *testing.T) {
 	mock.ExpectExec("DELETE FROM posts WHERE post_id = ?").WithArgs(1).WillReturnResult(sqlmock.NewResult(0, 0))
 
 	err = repo.DeleteByPId(1)
-	assert.EqualError(t, err, constants.Red+"No Post exist with this id"+constants.Reset)
+	assert.EqualError(t, err, config.Red+"No Post exist with this id"+config.Reset)
 }
 
 func TestMySQLPostRepository_GetPostsByFilter(t *testing.T) {
@@ -150,7 +150,7 @@ func TestMySQLPostRepository_UpdateUserPost_NoRowsAffected(t *testing.T) {
 		WillReturnResult(sqlmock.NewResult(0, 0))
 
 	err = repo.UpdateUserPost(1, 1, "Updated Title", "Updated Content")
-	assert.EqualError(t, err, constants.Red+"You can only update your post"+constants.Reset)
+	assert.EqualError(t, err, config.Red+"You can only update your post"+config.Reset)
 }
 
 func TestMySQLPostRepository_UpdateLike(t *testing.T) {
@@ -187,7 +187,7 @@ func TestMySQLPostRepository_UpdateLike_NoRowsAffected(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error, but got nil")
 	}
-	expectedErr := constants.Red + "No post exist with this id" + constants.Reset
+	expectedErr := config.Red + "No post exist with this id" + config.Reset
 	if err.Error() != expectedErr {
 		t.Errorf("Error message not equal:\n\texpected: %v\n\tactual  : %v", expectedErr, err.Error())
 	}
@@ -227,7 +227,7 @@ func TestDeleteByUIdPId_NoRows(t *testing.T) {
 	err = repo.DeleteByUIdPId(UId, PId)
 
 	assert.Error(t, err)
-	assert.EqualError(t, err, constants.Red+"No Post exist with this id"+constants.Reset)
+	assert.EqualError(t, err, config.Red+"No Post exist with this id"+config.Reset)
 }
 
 func TestDeleteByUId_Successful(t *testing.T) {

@@ -1,8 +1,6 @@
 package utils
 
 import (
-	"database/sql"
-	"errors"
 	"localEyes/internal/interfaces"
 	"strings"
 )
@@ -11,10 +9,13 @@ func ValidateUsername(username string, userRepo interfaces.UserRepository) bool 
 	if username == "admin" || username == "Admin" {
 		return false
 	}
-	_, err := userRepo.FindByUsername(username)
-	if errors.Is(err, sql.ErrNoRows) {
+	user, err := userRepo.FindByUsername(username)
+	if user == nil || err != nil {
 		return true
 	}
+	//if errors.Is(err, sql.ErrNoRows) {
+	//	return true
+	//}
 	return false
 }
 
@@ -30,5 +31,5 @@ func ValidatePassword(password string) bool {
 }
 
 func ValidateFilter(filter string) bool {
-	return filter == "food" || filter == "travel" || filter == "shopping" || filter == "other"
+	return filter == "food" || filter == "travel" || filter == "shopping" || filter == "other" || filter == ""
 }
