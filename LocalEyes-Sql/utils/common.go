@@ -2,15 +2,23 @@ package utils
 
 import (
 	"bufio"
+	"encoding/base64"
+	"errors"
 	"fmt"
+	"github.com/google/uuid"
 	"localEyes/config"
 	"localEyes/internal/interfaces"
 	"os"
 	"strconv"
 )
 
-func PromptInput(prompt string) string {
+var NotYourPost = errors.New("no post of yours exist with this id")
+var NotYourQuestion = errors.New("no question of yours exist with this id")
+var NoPost = errors.New("no post exist with this id")
+var NoQuestion = errors.New("no question exist with this id")
+var NoUser = errors.New("no user exist with this id")
 
+func PromptInput(prompt string) string {
 	// Create a new Scanner to read from standard input
 	scanner := bufio.NewScanner(os.Stdin)
 
@@ -54,4 +62,9 @@ func PromptPassword(promptInstance interfaces.PromptInterface) string {
 		return ""
 	}
 	return result
+}
+
+func GenerateRandomId() string {
+	id := uuid.New()
+	return base64.RawStdEncoding.EncodeToString(id[:])[:4]
 }

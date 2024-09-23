@@ -50,7 +50,7 @@ func TestValidateUsername_UsernameExists(t *testing.T) {
 	defer ctrl.Finish()
 
 	// Create a new MockUserRepository
-	mockRepo := mocks.NewMockUserRepository(ctrl)
+	mockRepo := mock.NewMockUserRepository(ctrl)
 
 	// Simulate FindByUsername returning an existing user (no error)
 	mockRepo.EXPECT().FindByUsername("existinguser").Return(nil, nil)
@@ -66,7 +66,7 @@ func TestValidateUsername_UsernameNotFound(t *testing.T) {
 	defer ctrl.Finish()
 
 	// Create a new MockUserRepository
-	mockRepo := mocks.NewMockUserRepository(ctrl)
+	mockRepo := mock.NewMockUserRepository(ctrl)
 
 	// Simulate FindByUsername returning sql.ErrNoRows for non-existing username
 	mockRepo.EXPECT().FindByUsername("newuser").Return(nil, sql.ErrNoRows)

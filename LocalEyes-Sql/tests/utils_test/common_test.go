@@ -72,7 +72,7 @@ func TestPromptPassword(t *testing.T) {
 	defer ctrl.Finish()
 
 	// Create a mock instance
-	mockPrompt := mocks.NewMockPromptInterface(ctrl)
+	mockPrompt := mock.NewMockPromptInterface(ctrl)
 
 	// Set up expectations
 	mockPrompt.EXPECT().Run().Return("testpassword", nil)

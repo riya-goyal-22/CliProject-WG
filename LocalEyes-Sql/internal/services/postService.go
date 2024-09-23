@@ -3,20 +3,26 @@ package services
 import (
 	"localEyes/internal/interfaces"
 	"localEyes/internal/models"
+	"localEyes/utils"
 	"time"
 )
 
 type PostService struct {
-	repo interfaces.PostRepository
+	repo     interfaces.PostRepository
+	userRepo interfaces.UserRepository
 }
 
-func NewPostService(repo interfaces.PostRepository) *PostService {
-	return &PostService{repo: repo}
+func NewPostService(repo interfaces.PostRepository, userRepo interfaces.UserRepository) *PostService {
+	return &PostService{
+		repo:     repo,
+		userRepo: userRepo,
+	}
 }
 
-func (s *PostService) CreatePost(userId int, title, content, postType string) error {
+func (s *PostService) CreatePost(userId string, title, content, postType string) error {
 	post := &models.Post{
 		UId:       userId,
+		PostId:    utils.GenerateRandomId(),
 		Title:     title,
 		Content:   content,
 		Type:      postType,
@@ -24,10 +30,17 @@ func (s *PostService) CreatePost(userId int, title, content, postType string) er
 		Likes:     0,
 	}
 	err := s.repo.Create(post)
-	return err
+	if err != nil {
+		return err
+	}
+	err = s.userRepo.PushNotification(userId, title)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
-func (s *PostService) UpdateMyPost(postId, userId int, title, content string) error {
+func (s *PostService) UpdateMyPost(postId, userId, title, content string) error {
 	err := s.repo.UpdateUserPost(postId, userId, title, content)
 	if err != nil {
 		return err
@@ -43,24 +56,24 @@ func (s *PostService) GiveAllPosts() ([]*models.Post, error) {
 	return posts, nil
 }
 
-func (s *PostService) GiveMyPosts(UId int) ([]*models.Post, error) {
-	posts, err := s.repo.GetPostsByUId(UId)
+func (s *PostService) GiveMyPosts(uId string) ([]*models.Post, error) {
+	posts, err := s.repo.GetPostsByUId(uId)
 	if err != nil {
 		return nil, err
 	}
 	return posts, nil
 }
 
-func (s *PostService) DeleteMyPost(UId, PId int) error {
-	err := s.repo.DeleteByUIdPId(UId, PId)
+func (s *PostService) DeleteMyPost(uId, pId string) error {
+	err := s.repo.DeleteByUIdPId(uId, pId)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (s *PostService) Like(PId int) error {
-	err := s.repo.UpdateLike(PId)
+func (s *PostService) Like(pId string) error {
+	err := s.repo.UpdateLike(pId)
 	if err != nil {
 		return err
 	}
@@ -75,10 +88,18 @@ func (s *PostService) GiveFilteredPosts(filterType string) ([]*models.Post, erro
 	return posts, nil
 }
 
-func (s *PostService) PostIdExist(PId int) (bool, error) {
-	posts, err := s.repo.GetPostsByPId(PId)
+//func (s *PostService) PostIdExist(pId string) (bool, error) {
+//	posts, err := s.repo.GetPostByPId(pId)
+//	if err != nil {
+//		return false, err
+//	}
+//	return len(posts) > 0, nil
+//}
+
+func (s *PostService) GivePostById(pId string) (*models.PostWithQuestions, error) {
+	post, err := s.repo.GetPostByPId(pId)
 	if err != nil {
-		return false, err
+		return nil, err
 	}
-	return len(posts) > 0, nil
+	return post, nil
 }

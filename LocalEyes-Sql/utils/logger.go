@@ -1,29 +1,42 @@
 package utils
 
 import (
-	"fmt"
-	"log"
+	"errors"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 	"os"
 )
 
-var Logger *log.Logger
-var file *os.File
+var Logger *zap.Logger
 
-func InitLoggerFile() {
-	var err error
-	file, err = os.OpenFile("app.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
-	if err != nil {
-		log.Fatalf("error opening log file: %v", err)
+func init() {
+	encoderCfg := zapcore.EncoderConfig{
+		MessageKey:     "message",
+		LevelKey:       "level",
+		TimeKey:        "time",
+		NameKey:        "logger",
+		CallerKey:      "caller",
+		StacktraceKey:  "", // Ensure stack trace key is empty to exclude stack traces
+		LineEnding:     zapcore.DefaultLineEnding,
+		EncodeLevel:    zapcore.CapitalLevelEncoder,
+		EncodeTime:     zapcore.ISO8601TimeEncoder,
+		EncodeDuration: zapcore.SecondsDurationEncoder,
+		EncodeCaller:   zapcore.FullCallerEncoder,
 	}
+	core := zapcore.NewCore(
+		zapcore.NewJSONEncoder(encoderCfg),
+		zapcore.AddSync(os.Stdout),
+		zap.NewAtomicLevelAt(zap.InfoLevel),
+	)
+	Logger = zap.New(core)
 
-	// Create a new logger that writes to the file
-	Logger = log.New(file, "", log.Ldate|log.Ltime|log.Lshortfile)
 }
 
-func CloseLoggerFile() {
-	err := file.Close()
-	if err != nil {
-		fmt.Println("Failed to close log file")
-		return
-	}
+func Info(msg string, fields ...zap.Field) {
+	Logger.Info(msg, fields...)
+}
+
+func Error(msg string) {
+	err := errors.New(msg)
+	Logger.Error(msg, zap.String("context", "error"), zap.Error(err))
 }

@@ -3,7 +3,6 @@ package repositories
 import (
 	"database/sql"
 	"encoding/json"
-	"errors"
 	"localEyes/config"
 	"localEyes/internal/models"
 	"localEyes/utils"
@@ -28,14 +27,14 @@ func (r *MySQLUserRepository) Create(user *models.User) error {
 	return err
 }
 
-func (r *MySQLUserRepository) FindByUId(UId int) (*models.User, error) {
+func (r *MySQLUserRepository) FindByUId(uId string) (*models.User, error) {
 	var user models.User
-	columns := []string{"id", "username", "password", "is_active", "city", "dwelling_age", "tag", "notification"}
-	condition := "id"
+	columns := []string{"uuid", "username", "password", "is_active", "city", "dwelling_age", "tag", "notification"}
+	condition := "uuid"
 	query := config.SelectQuery(config.UserTable, condition, "", columns)
-	//query := "SELECT id, username, password, is_active, city, dwelling_age, tag, notification FROM users WHERE id = ?"
+	//query := "SELECT uuid, username, password, is_active, city, dwelling_age, tag, notification FROM users WHERE uuid = ?"
 	var notification []byte
-	err := r.DB.QueryRow(query, UId).Scan(&user.UId, &user.Username, &user.Password, &user.IsActive, &user.City, &user.DwellingAge, &user.Tag, &notification)
+	err := r.DB.QueryRow(query, uId).Scan(&user.UId, &user.Username, &user.Password, &user.IsActive, &user.City, &user.DwellingAge, &user.Tag, &notification)
 	err = json.Unmarshal(notification, &user.Notification)
 	if err != nil {
 		return nil, err
@@ -45,10 +44,10 @@ func (r *MySQLUserRepository) FindByUId(UId int) (*models.User, error) {
 
 func (r *MySQLUserRepository) FindByUsername(username string) (*models.User, error) {
 	var user models.User
-	columns := []string{"id", "username", "password", "is_active", "city", "dwelling_age", "tag", "notification"}
+	columns := []string{"uuid", "username", "password", "is_active", "city", "dwelling_age", "tag", "notification"}
 	condition1 := "username"
 	query := config.SelectQuery(config.UserTable, condition1, "", columns)
-	//query := "SELECT id, username, password, is_active, city, dwelling_age, tag, notification FROM users WHERE username = ?"
+	//query := "SELECT uuid, username, password, is_active, city, dwelling_age, tag, notification FROM users WHERE username = ?"
 	var notification []byte
 	err := r.DB.QueryRow(query, username).Scan(&user.UId, &user.Username, &user.Password, &user.IsActive, &user.City, &user.DwellingAge, &user.Tag, &notification)
 	err = json.Unmarshal(notification, &user.Notification)
@@ -60,11 +59,11 @@ func (r *MySQLUserRepository) FindByUsername(username string) (*models.User, err
 
 func (r *MySQLUserRepository) FindByUsernamePassword(username, password string) (*models.User, error) {
 	var user models.User
-	columns := []string{"id", "username", "password", "is_active", "city", "dwelling_age", "tag", "notification"}
+	columns := []string{"uuid", "username", "password", "is_active", "city", "dwelling_age", "tag", "notification"}
 	condition1 := "username"
 	condition2 := "password"
 	query := config.SelectQuery(config.UserTable, condition1, condition2, columns)
-	//query := "SELECT id, username, password, is_active, city, dwelling_age, tag, notification FROM users WHERE username = ? AND password = ?"
+	//query := "SELECT uuid, username, password, is_active, city, dwelling_age, tag, notification FROM users WHERE username = ? AND password = ?"
 	var notification []byte
 	err := r.DB.QueryRow(query, username, password).Scan(&user.UId, &user.Username, &user.Password, &user.IsActive, &user.City, &user.DwellingAge, &user.Tag, &notification)
 	err = json.Unmarshal(notification, &user.Notification)
@@ -74,25 +73,10 @@ func (r *MySQLUserRepository) FindByUsernamePassword(username, password string) 
 	return &user, err
 }
 
-func (r *MySQLUserRepository) FindAdminByUsernamePassword(username, password string) (*models.Admin, error) {
-	var admin models.Admin
-	columns := []string{"id", "username", "password"}
-	condition1 := "username"
-	condition2 := "password"
-	query := config.SelectQuery(config.UserTable, condition1, condition2, columns)
-	//query := "SELECT id, username, password FROM users WHERE username = ? AND password = ?"
-	row := r.DB.QueryRow(query, username, password)
-	if row != nil {
-		err := row.Scan(&admin.User.UId, &admin.User.Username, &admin.User.Password)
-		return &admin, err
-	}
-	return nil, errors.New("not found")
-}
-
 func (r *MySQLUserRepository) GetAllUsers() ([]*models.User, error) {
-	columns := []string{"id", "username", "password", "is_active", "city", "dwelling_age", "tag", "notification"}
+	columns := []string{"uuid", "username", "password", "is_active", "city", "dwelling_age", "tag", "notification"}
 	query := config.SelectQuery(config.UserTable, "", "", columns)
-	//query := "SELECT id, username, password, is_active, city, dwelling_age, tag, notification FROM users"
+	//query := "SELECT uuid, username, password, is_active, city, dwelling_age, tag, notification FROM users"
 	rows, err := r.DB.Query(query)
 	if err != nil {
 		return nil, err
@@ -100,7 +84,7 @@ func (r *MySQLUserRepository) GetAllUsers() ([]*models.User, error) {
 	defer func(rows *sql.Rows) {
 		err := rows.Close()
 		if err != nil {
-			utils.Logger.Println("ERROR: Error closing rows:", err)
+			utils.Logger.Error("ERROR: Error closing rows:" + err.Error())
 		}
 	}(rows)
 
@@ -120,57 +104,57 @@ func (r *MySQLUserRepository) GetAllUsers() ([]*models.User, error) {
 	return users, nil
 }
 
-func (r *MySQLUserRepository) DeleteByUId(UId int) error {
-	condition1 := "id"
+func (r *MySQLUserRepository) DeleteByUId(uId string) error {
+	condition1 := "uuid"
 	query := config.DeleteQuery(config.UserTable, condition1, "")
-	//query := "DELETE FROM users WHERE id = ?"
-	result, err := r.DB.Exec(query, UId)
+	//query := "DELETE FROM users WHERE uuid = ?"
+	result, err := r.DB.Exec(query, uId)
 	if result != nil {
 		affectedRows, err := result.RowsAffected()
 		if err != nil {
 			return err
 		}
 		if affectedRows == 0 {
-			return errors.New(config.Red + "No user exist with this id" + config.Reset)
+			return utils.NoUser
 		}
 	}
 	return err
 }
 
-func (r *MySQLUserRepository) UpdateActiveStatus(UId int, status bool) error {
-	condition1 := "id"
+func (r *MySQLUserRepository) UpdateActiveStatus(uId string, status bool) error {
+	condition1 := "uuid"
 	columns := []string{"is_active"}
 	query := config.UpdateQuery(config.UserTable, condition1, "", columns)
-	//query := "UPDATE users SET is_active = ? WHERE id = ?"
-	result, err := r.DB.Exec(query, status, UId)
+	//query := "UPDATE users SET is_active = ? WHERE uuid = ?"
+	result, err := r.DB.Exec(query, status, uId)
 	if result != nil {
 		affectedRows, err := result.RowsAffected()
 		if err != nil {
 			return err
 		}
 		if affectedRows == 0 {
-			return errors.New(config.Red + "No inActive user exist with this id" + config.Reset)
+			return utils.NoUser
 		}
 	}
 	return err
 }
 
-func (r *MySQLUserRepository) PushNotification(UId int, title string) error {
+func (r *MySQLUserRepository) PushNotification(uId, title string) error {
 	columns := "notification= JSON_ARRAY_APPEND(notification, '$' ,?)"
-	condition1 := "id!=?"
-	condition2 := "username!=?"
+	condition1 := "uuid!"
+	condition2 := "username!"
 	query := config.UpdateQueryWithValue(config.UserTable, condition1, condition2, columns)
-	//query := "UPDATE users SET notification= JSON_ARRAY_APPEND(notification, '$' ,?) WHERE id != ?"
+	//query := "UPDATE users SET notification= JSON_ARRAY_APPEND(notification, '$' ,?) WHERE uuid != ?"
 	notification := "New post: " + title + "\n"
-	_, err := r.DB.Exec(query, notification, UId, "admin")
+	_, err := r.DB.Exec(query, notification, uId, "admin")
 	return err
 }
 
-func (r *MySQLUserRepository) ClearNotification(UId int) error {
+func (r *MySQLUserRepository) ClearNotification(uId string) error {
 	columns := []string{"notification"}
-	condition1 := "id"
+	condition1 := "uuid"
 	query := config.UpdateQuery(config.UserTable, condition1, "", columns)
-	//query := "UPDATE users SET notification =?  WHERE id = ?"
-	_, err := r.DB.Exec(query, "[]", UId)
+	//query := "UPDATE users SET notification =?  WHERE uuid = ?"
+	_, err := r.DB.Exec(query, "[]", uId)
 	return err
 }

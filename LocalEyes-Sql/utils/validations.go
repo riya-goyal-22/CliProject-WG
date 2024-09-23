@@ -1,7 +1,9 @@
 package utils
 
 import (
+	"errors"
 	"localEyes/internal/interfaces"
+	"localEyes/internal/models"
 	"strings"
 )
 
@@ -13,9 +15,6 @@ func ValidateUsername(username string, userRepo interfaces.UserRepository) bool 
 	if user == nil || err != nil {
 		return true
 	}
-	//if errors.Is(err, sql.ErrNoRows) {
-	//	return true
-	//}
 	return false
 }
 
@@ -32,4 +31,27 @@ func ValidatePassword(password string) bool {
 
 func ValidateFilter(filter string) bool {
 	return filter == "food" || filter == "travel" || filter == "shopping" || filter == "other" || filter == ""
+}
+
+func SetTag(value float64) string {
+	if value > 1.0 {
+		return "resident"
+	}
+	return "newbie"
+}
+
+func ValidatePostRequest(post models.RequestPost) (bool, error) {
+	if post.Title == "" {
+		return false, errors.New("required field 'title' is missing")
+	}
+	if post.Content == "" {
+		return false, errors.New("required field 'content' is missing")
+	}
+	if post.Type == "" {
+		return false, errors.New("required field 'type' is missing")
+	}
+	if post.Type != "food" && post.Type != "shopping" && post.Type != "travel" && post.Type != "other" {
+		return false, errors.New("invalid post type")
+	}
+	return true, nil
 }
