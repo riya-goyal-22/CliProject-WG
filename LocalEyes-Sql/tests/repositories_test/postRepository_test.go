@@ -99,7 +99,7 @@ func TestDeleteByUIdPId(t *testing.T) {
 	postId := "post-uuid"
 	uId := "user-uuid"
 
-	mock.ExpectExec("^DELETE FROM posts WHERE post_id = \\? AND uuid = \\?$").
+	mock.ExpectExec("^DELETE FROM posts WHERE post_id= \\? AND uuid= \\?$").
 		WithArgs(postId, uId).
 		WillReturnResult(sqlmock.NewResult(1, 1))
 

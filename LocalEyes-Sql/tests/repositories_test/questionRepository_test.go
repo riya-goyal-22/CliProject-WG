@@ -63,7 +63,7 @@ func TestDeleteByQIdUId(t *testing.T) {
 
 	repo := repositories.NewMySQLQuestionRepository(db)
 
-	mock.ExpectExec("DELETE FROM questions WHERE q_id = \\? AND uuid = \\?").
+	mock.ExpectExec("DELETE FROM questions WHERE q_id= \\? AND uuid= \\?").
 		WithArgs("q-1", "user-1").
 		WillReturnResult(sqlmock.NewResult(1, 1))
 

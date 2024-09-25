@@ -2,6 +2,7 @@ package handlers_test
 
 import (
 	"bytes"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"github.com/golang-jwt/jwt/v5"
@@ -68,6 +69,7 @@ func TestPostHandler_CreatePost(t *testing.T) {
 func TestPostHandler_CreatePost_ErrorCases(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
+	defer func() { utils.ExtractClaimsFunc = utils.ExtractClaims }()
 
 	mockService := mock.NewMockPostServiceInterface(ctrl)
 	handler := handlers.NewPostHandler(mockService)
@@ -107,6 +109,18 @@ func TestPostHandler_CreatePost_ErrorCases(t *testing.T) {
 			},
 			expectedCode: http.StatusInternalServerError,
 			expectedMsg:  "Error creating post",
+		},
+		{
+			name: "invalid body",
+			body: `{"title": "", "content": "This is a test.", "type": "travel"}`,
+			mockSetup: func() {
+				utils.ExtractClaimsFunc = func(token string) (jwt.MapClaims, error) {
+					return jwt.MapClaims{"id": "userId"}, nil
+				}
+				//mockService.EXPECT().CreatePost("userId", "", "This is a test.", "travel").Return(errors.New("database error"))
+			},
+			expectedCode: http.StatusBadRequest,
+			expectedMsg:  "required field 'title' is missing",
 		},
 	}
 
@@ -159,7 +173,52 @@ func TestPostHandler_DisplayPosts(t *testing.T) {
 	}
 	mockService.EXPECT().GiveAllPosts().Return(posts, nil)
 
-	req, err := http.NewRequest("GET", "/posts", nil)
+	req, err := http.NewRequest("GET", "/posts?limit=1", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rr := httptest.NewRecorder()
+	router := mux.NewRouter()
+	router.HandleFunc("/posts", handler.DisplayPosts).Methods("GET")
+
+	router.ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("handler returned wrong status code: got %v want %v", status, http.StatusOK)
+	}
+
+	expectedResponse := models.Response{
+		Code:    http.StatusOK,
+		Message: "Success",
+		Data:    posts,
+	}
+	var actualRes models.Response
+	if err := json.Unmarshal(rr.Body.Bytes(), &actualRes); err != nil {
+		t.Fatalf("failed to unmarshal actual response: %v", err)
+	}
+	if actualRes.Code != expectedResponse.Code {
+		t.Errorf("handler returned wrong status code: got %v want %v", actualRes.Code, expectedResponse.Code)
+	}
+	if actualRes.Message != expectedResponse.Message {
+		t.Errorf("handler returned wrong message: got %v want %v", actualRes.Message, expectedResponse.Message)
+	}
+}
+
+func TestPostHandler_DisplayPostsWithFilter(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockService := mock.NewMockPostServiceInterface(ctrl)
+	handler := handlers.NewPostHandler(mockService)
+
+	posts := []*models.Post{
+		{PostId: "1", UId: "userId", Title: "Post 1", Content: "Content 1", Type: "travel", Likes: 0},
+		{PostId: "2", UId: "userId", Title: "Post 1", Content: "Content 1", Type: "travel", Likes: 0},
+	}
+	mockService.EXPECT().GiveFilteredPosts("travel").Return(posts, nil)
+
+	req, err := http.NewRequest("GET", "/posts?filter=travel&limit=1", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -242,7 +301,7 @@ func TestPostHandler_UpdatePost(t *testing.T) {
 func TestPostHandler_UpdatePost_ErrorCases(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
-
+	defer func() { utils.ExtractClaimsFunc = utils.ExtractClaims }()
 	mockService := mock.NewMockPostServiceInterface(ctrl)
 	handler := handlers.NewPostHandler(mockService)
 
@@ -347,49 +406,75 @@ func TestPostHandler_DeletePost(t *testing.T) {
 	handler := handlers.NewPostHandler(mockService)
 
 	postId := "1"
-	req, err := http.NewRequest("DELETE", "/posts/"+postId, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	req.Header.Set("Authorization", "Bearer valid-token")
-	// Mock the ExtractClaims function
+	userId := "user123"
+	bearerToken := "Bearer valid_token"
+
+	// Mocking claims extraction
 	utils.ExtractClaimsFunc = func(token string) (jwt.MapClaims, error) {
-		return jwt.MapClaims{"id": "userId"}, nil
+		return jwt.MapClaims{"id": userId}, nil
 	}
-	defer func() { utils.ExtractClaimsFunc = utils.ExtractClaims }() // Reset after test
 
-	mockService.EXPECT().DeleteMyPost("userId", postId).Return(nil)
+	// Successful deletion
+	mockService.EXPECT().DeleteMyPost(userId, postId).Return(nil)
 
+	req, _ := http.NewRequest("DELETE", "/posts/"+postId, nil)
+	req.Header.Set("Authorization", bearerToken)
 	rr := httptest.NewRecorder()
 	router := mux.NewRouter()
-	router.HandleFunc("/posts/{post_id}", handler.DeletePost).Methods("DELETE")
-
+	router.HandleFunc("/posts/{post_id}", handler.DeletePost)
 	router.ServeHTTP(rr, req)
 
 	if status := rr.Code; status != http.StatusOK {
 		t.Errorf("handler returned wrong status code: got %v want %v", status, http.StatusOK)
 	}
-	expectedResponse := models.Response{
-		Code:    http.StatusOK,
-		Message: "Post deleted successfully",
-		Data:    nil,
+
+	var response models.Response
+	json.NewDecoder(rr.Body).Decode(&response)
+	if response.Code != http.StatusOK || response.Message != "Post deleted successfully" {
+		t.Errorf("unexpected response: got %v", response)
 	}
-	var actualRes models.Response
-	if err := json.Unmarshal(rr.Body.Bytes(), &actualRes); err != nil {
-		t.Fatalf("failed to unmarshal actual response: %v", err)
+
+	// Not your post case
+	mockService.EXPECT().DeleteMyPost(userId, postId).Return(utils.NotYourPost)
+
+	req, _ = http.NewRequest("DELETE", "/posts/"+postId, nil)
+	req.Header.Set("Authorization", bearerToken)
+	rr = httptest.NewRecorder()
+	router.ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusNotFound {
+		t.Errorf("handler returned wrong status code: got %v want %v", status, http.StatusNotFound)
 	}
-	if actualRes.Code != expectedResponse.Code {
-		t.Errorf("handler returned wrong status code: got %v want %v", actualRes.Code, expectedResponse.Code)
+
+	var notFoundResponse models.Response
+	json.NewDecoder(rr.Body).Decode(&notFoundResponse)
+	if notFoundResponse.Code != http.StatusNotFound {
+		t.Errorf("unexpected response: got %v", notFoundResponse)
 	}
-	if actualRes.Message != expectedResponse.Message {
-		t.Errorf("handler returned wrong message: got %v want %v", actualRes.Message, expectedResponse.Message)
+
+	// Internal server error case
+	mockService.EXPECT().DeleteMyPost(userId, postId).Return(errors.New("db error"))
+
+	req, _ = http.NewRequest("DELETE", "/posts/"+postId, nil)
+	req.Header.Set("Authorization", bearerToken)
+	rr = httptest.NewRecorder()
+	router.ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusInternalServerError {
+		t.Errorf("handler returned wrong status code: got %v want %v", status, http.StatusInternalServerError)
+	}
+
+	var errorResponse models.Response
+	json.NewDecoder(rr.Body).Decode(&errorResponse)
+	if errorResponse.Code != http.StatusInternalServerError || errorResponse.Message != "Error deleting post" {
+		t.Errorf("unexpected response: got %v", errorResponse)
 	}
 }
 
 func TestPostHandler_DisplayPosts_ErrorCases(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
-
+	defer func() { utils.ExtractClaimsFunc = utils.ExtractClaims }()
 	mockService := mock.NewMockPostServiceInterface(ctrl)
 	handler := handlers.NewPostHandler(mockService)
 
@@ -463,6 +548,47 @@ func TestPostHandler_DisplayPosts_ErrorCases(t *testing.T) {
 	}
 }
 
+//func TestPostHandler_LikePost(t *testing.T) {
+//	ctrl := gomock.NewController(t)
+//	defer ctrl.Finish()
+//
+//	mockService := mock.NewMockPostServiceInterface(ctrl)
+//	handler := handlers.NewPostHandler(mockService)
+//
+//	postId := "1"
+//	req, err := http.NewRequest("POST", "/posts/"+postId+"/like", nil)
+//	if err != nil {
+//		t.Fatal(err)
+//	}
+//
+//	mockService.EXPECT().Like(postId).Return(nil)
+//
+//	rr := httptest.NewRecorder()
+//	router := mux.NewRouter()
+//	router.HandleFunc("/posts/{post_id}/like", handler.LikePost).Methods("POST")
+//
+//	router.ServeHTTP(rr, req)
+//
+//	if status := rr.Code; status != http.StatusOK {
+//		t.Errorf("handler returned wrong status code: got %v want %v", status, http.StatusOK)
+//	}
+//	expectedResponse := models.Response{
+//		Code:    http.StatusOK,
+//		Message: "Post liked successfully",
+//		Data:    nil,
+//	}
+//	var actualRes models.Response
+//	if err := json.Unmarshal(rr.Body.Bytes(), &actualRes); err != nil {
+//		t.Fatalf("failed to unmarshal actual response: %v", err)
+//	}
+//	if actualRes.Code != expectedResponse.Code {
+//		t.Errorf("handler returned wrong status code: got %v want %v", actualRes.Code, expectedResponse.Code)
+//	}
+//	if actualRes.Message != expectedResponse.Message {
+//		t.Errorf("handler returned wrong message: got %v want %v", actualRes.Message, expectedResponse.Message)
+//	}
+//}
+
 func TestPostHandler_LikePost(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
@@ -471,38 +597,105 @@ func TestPostHandler_LikePost(t *testing.T) {
 	handler := handlers.NewPostHandler(mockService)
 
 	postId := "1"
-	req, err := http.NewRequest("POST", "/posts/"+postId+"/like", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
 
+	// Successful like
 	mockService.EXPECT().Like(postId).Return(nil)
 
+	req, _ := http.NewRequest("POST", "/posts/"+postId+"/like", nil)
 	rr := httptest.NewRecorder()
 	router := mux.NewRouter()
-	router.HandleFunc("/posts/{post_id}/like", handler.LikePost).Methods("POST")
-
+	router.HandleFunc("/posts/{post_id}/like", handler.LikePost)
 	router.ServeHTTP(rr, req)
 
 	if status := rr.Code; status != http.StatusOK {
 		t.Errorf("handler returned wrong status code: got %v want %v", status, http.StatusOK)
 	}
-	expectedResponse := models.Response{
-		Code:    http.StatusOK,
-		Message: "Post liked successfully",
-		Data:    nil,
+
+	var response models.Response
+	json.NewDecoder(rr.Body).Decode(&response)
+	if response.Code != http.StatusOK || response.Message != "Post liked successfully" {
+		t.Errorf("unexpected response: got %v", response)
 	}
-	var actualRes models.Response
-	if err := json.Unmarshal(rr.Body.Bytes(), &actualRes); err != nil {
-		t.Fatalf("failed to unmarshal actual response: %v", err)
+
+	// No post case
+	mockService.EXPECT().Like(postId).Return(utils.NoPost)
+
+	req, _ = http.NewRequest("POST", "/posts/"+postId+"/like", nil)
+	rr = httptest.NewRecorder()
+	router.ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusNotFound {
+		t.Errorf("handler returned wrong status code: got %v want %v", status, http.StatusNotFound)
 	}
-	if actualRes.Code != expectedResponse.Code {
-		t.Errorf("handler returned wrong status code: got %v want %v", actualRes.Code, expectedResponse.Code)
+
+	var notFoundResponse models.Response
+	json.NewDecoder(rr.Body).Decode(&notFoundResponse)
+	if notFoundResponse.Code != http.StatusNotFound {
+		t.Errorf("unexpected response: got %v", notFoundResponse)
 	}
-	if actualRes.Message != expectedResponse.Message {
-		t.Errorf("handler returned wrong message: got %v want %v", actualRes.Message, expectedResponse.Message)
+
+	// Internal server error case
+	mockService.EXPECT().Like(postId).Return(errors.New("db error"))
+
+	req, _ = http.NewRequest("POST", "/posts/"+postId+"/like", nil)
+	rr = httptest.NewRecorder()
+	router.ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusInternalServerError {
+		t.Errorf("handler returned wrong status code: got %v want %v", status, http.StatusInternalServerError)
+	}
+
+	var errorResponse models.Response
+	json.NewDecoder(rr.Body).Decode(&errorResponse)
+	if errorResponse.Code != http.StatusInternalServerError || errorResponse.Message != "Error liking post" {
+		t.Errorf("unexpected response: got %v", errorResponse)
 	}
 }
+
+//func TestPostHandler_DisplayPostById(t *testing.T) {
+//	ctrl := gomock.NewController(t)
+//	defer ctrl.Finish()
+//
+//	mockService := mock.NewMockPostServiceInterface(ctrl)
+//	handler := handlers.NewPostHandler(mockService)
+//
+//	postId := "1"
+//	posts := &models.PostWithQuestions{
+//		PostId: "1", UId: "userId", Title: "Post 1", Content: "Content 1", Type: "travel", Likes: 0,
+//	}
+//	mockService.EXPECT().GivePostById(postId).Return(posts, nil)
+//
+//	req, err := http.NewRequest("GET", "/posts/"+postId, nil)
+//	if err != nil {
+//		t.Fatal(err)
+//	}
+//
+//	rr := httptest.NewRecorder()
+//	router := mux.NewRouter()
+//	router.HandleFunc("/posts/{post_id}", handler.DisplayPostById).Methods("GET")
+//
+//	router.ServeHTTP(rr, req)
+//
+//	if status := rr.Code; status != http.StatusOK {
+//		t.Errorf("handler returned wrong status code: got %v want %v", status, http.StatusOK)
+//	}
+//	expectedResponse := models.Response{
+//		Code:    http.StatusOK,
+//		Message: "Successfully displayed post",
+//		Data:    posts,
+//	}
+//	var actualRes models.Response
+//	if err := json.Unmarshal(rr.Body.Bytes(), &actualRes); err != nil {
+//		t.Fatalf("failed to unmarshal actual response: %v", err)
+//	}
+//	if actualRes.Code != expectedResponse.Code {
+//		t.Errorf("handler returned wrong status code: got %v want %v", actualRes.Code, expectedResponse.Code)
+//	}
+//	if actualRes.Message != expectedResponse.Message {
+//		t.Errorf("handler returned wrong message: got %v want %v", actualRes.Message, expectedResponse.Message)
+//	}
+//
+//}
 
 func TestPostHandler_DisplayPostById(t *testing.T) {
 	ctrl := gomock.NewController(t)
@@ -512,41 +705,61 @@ func TestPostHandler_DisplayPostById(t *testing.T) {
 	handler := handlers.NewPostHandler(mockService)
 
 	postId := "1"
+
+	// Successful display
 	posts := &models.PostWithQuestions{
 		PostId: "1", UId: "userId", Title: "Post 1", Content: "Content 1", Type: "travel", Likes: 0,
 	}
 	mockService.EXPECT().GivePostById(postId).Return(posts, nil)
-
-	req, err := http.NewRequest("GET", "/posts/"+postId, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-
+	req, _ := http.NewRequest("GET", "/posts/"+postId, nil)
 	rr := httptest.NewRecorder()
 	router := mux.NewRouter()
-	router.HandleFunc("/posts/{post_id}", handler.DisplayPostById).Methods("GET")
-
+	router.HandleFunc("/posts/{post_id}", handler.DisplayPostById)
 	router.ServeHTTP(rr, req)
 
 	if status := rr.Code; status != http.StatusOK {
 		t.Errorf("handler returned wrong status code: got %v want %v", status, http.StatusOK)
 	}
-	expectedResponse := models.Response{
-		Code:    http.StatusOK,
-		Message: "Successfully displayed post",
-		Data:    posts,
-	}
-	var actualRes models.Response
-	if err := json.Unmarshal(rr.Body.Bytes(), &actualRes); err != nil {
-		t.Fatalf("failed to unmarshal actual response: %v", err)
-	}
-	if actualRes.Code != expectedResponse.Code {
-		t.Errorf("handler returned wrong status code: got %v want %v", actualRes.Code, expectedResponse.Code)
-	}
-	if actualRes.Message != expectedResponse.Message {
-		t.Errorf("handler returned wrong message: got %v want %v", actualRes.Message, expectedResponse.Message)
+
+	var response models.Response
+	json.NewDecoder(rr.Body).Decode(&response)
+	if response.Code != http.StatusOK || response.Message != "Successfully displayed post" {
+		t.Errorf("unexpected response: got %v", response)
 	}
 
+	// No post found case
+	mockService.EXPECT().GivePostById(postId).Return(nil, sql.ErrNoRows)
+
+	req, _ = http.NewRequest("GET", "/posts/"+postId, nil)
+	rr = httptest.NewRecorder()
+	router.ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusNotFound {
+		t.Errorf("handler returned wrong status code: got %v want %v", status, http.StatusNotFound)
+	}
+
+	var notFoundResponse models.Response
+	json.NewDecoder(rr.Body).Decode(&notFoundResponse)
+	if notFoundResponse.Code != http.StatusNotFound || notFoundResponse.Message != "No Post found with that id" {
+		t.Errorf("unexpected response: got %v", notFoundResponse)
+	}
+
+	// Internal server error case
+	mockService.EXPECT().GivePostById(postId).Return(nil, errors.New("db error"))
+
+	req, _ = http.NewRequest("GET", "/posts/"+postId, nil)
+	rr = httptest.NewRecorder()
+	router.ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusInternalServerError {
+		t.Errorf("handler returned wrong status code: got %v want %v", status, http.StatusInternalServerError)
+	}
+
+	var errorResponse models.Response
+	json.NewDecoder(rr.Body).Decode(&errorResponse)
+	if errorResponse.Code != http.StatusInternalServerError || errorResponse.Message != "Error getting post db error" {
+		t.Errorf("unexpected response: got %v", errorResponse)
+	}
 }
 
 func TestPostHandler_DisplayUserPosts(t *testing.T) {
@@ -612,6 +825,7 @@ func TestPostHandler_DisplayUserPosts(t *testing.T) {
 func TestPostHandler_DisplayUserPosts_ErrorCases(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
+	defer func() { utils.ExtractClaimsFunc = utils.ExtractClaims }()
 
 	mockService := mock.NewMockPostServiceInterface(ctrl)
 	handler := handlers.NewPostHandler(mockService)

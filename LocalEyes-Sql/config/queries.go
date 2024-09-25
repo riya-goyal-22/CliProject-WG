@@ -48,7 +48,7 @@ func DeleteQuery(tableName, condition1, condition2 string) string {
 		query := fmt.Sprintf("DELETE FROM %s WHERE %s = ?", tableName, condition1)
 		return query
 	}
-	query := fmt.Sprintf("DELETE FROM %s WHERE %s = ? AND %s = ?", tableName, condition1, condition2)
+	query := fmt.Sprintf("DELETE FROM %s WHERE %s= ? AND %s= ?", tableName, condition1, condition2)
 	return query
 }
 

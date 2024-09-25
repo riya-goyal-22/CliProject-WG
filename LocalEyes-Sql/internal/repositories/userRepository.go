@@ -106,9 +106,10 @@ func (r *MySQLUserRepository) GetAllUsers() ([]*models.User, error) {
 
 func (r *MySQLUserRepository) DeleteByUId(uId string) error {
 	condition1 := "uuid"
-	query := config.DeleteQuery(config.UserTable, condition1, "")
+	condition2 := "username!"
+	query := config.DeleteQuery(config.UserTable, condition1, condition2)
 	//query := "DELETE FROM users WHERE uuid = ?"
-	result, err := r.DB.Exec(query, uId)
+	result, err := r.DB.Exec(query, uId, "admin")
 	if result != nil {
 		affectedRows, err := result.RowsAffected()
 		if err != nil {

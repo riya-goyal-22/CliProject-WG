@@ -122,7 +122,7 @@ func TestDeleteByUId(t *testing.T) {
 
 	repo := repositories.NewMySQLUserRepository(db)
 
-	mock.ExpectExec("^DELETE FROM users WHERE uuid = \\?$").
+	mock.ExpectExec("^DELETE FROM users WHERE uuid= \\? AND username!= \\?$").
 		WithArgs("user-uuid").
 		WillReturnResult(sqlmock.NewResult(1, 1))
 

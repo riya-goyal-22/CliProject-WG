@@ -11,6 +11,8 @@ import (
 
 var ExtractClaimsFunc = ExtractClaims
 var GenerateTokenFunc = GenerateToken
+var ValidateTokenFunc = ValidateToken
+var ValidateAdminTokenFunc = ValidateAdminToken
 
 func GenerateToken(username string, uid string) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{

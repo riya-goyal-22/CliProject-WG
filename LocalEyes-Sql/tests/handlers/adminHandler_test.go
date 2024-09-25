@@ -2,6 +2,7 @@ package handlers_test
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -294,4 +295,100 @@ func TestAdminHandler_ReActivateUser(t *testing.T) {
 	if status := rr.Code; status != http.StatusNotFound {
 		t.Errorf("handler returned wrong status code: got %v want %v", status, http.StatusNotFound)
 	}
+}
+
+func TestAdminHandler_DeleteUser_Error(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockService := mock.NewMockAdminServiceInterface(ctrl)
+	handler := handlers.NewAdminHandler(mockService)
+
+	userId := "1"
+
+	// Internal server error
+	mockService.EXPECT().DeleteUser(userId).Return(errors.New("db error"))
+
+	req, _ := http.NewRequest("DELETE", "/admin/users/"+userId, nil)
+	rr := httptest.NewRecorder()
+	router := mux.NewRouter()
+	router.HandleFunc("/admin/users/{user_id}", handler.DeleteUser)
+	router.ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusInternalServerError {
+		t.Errorf("handler returned wrong status code: got %v want %v", status, http.StatusInternalServerError)
+	}
+
+}
+
+func TestAdminHandler_DeletePost_Error(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockService := mock.NewMockAdminServiceInterface(ctrl)
+	handler := handlers.NewAdminHandler(mockService)
+
+	postId := "1"
+
+	// internal server error
+	mockService.EXPECT().DeletePost(postId).Return(errors.New("db error"))
+
+	req, _ := http.NewRequest("DELETE", "/admin/posts/"+postId, nil)
+	rr := httptest.NewRecorder()
+	router := mux.NewRouter()
+	router.HandleFunc("/admin/posts/{post_id}", handler.DeletePost)
+	router.ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusInternalServerError {
+		t.Errorf("handler returned wrong status code: got %v want %v", status, http.StatusInternalServerError)
+	}
+
+}
+
+func TestAdminHandler_DeleteQuestion_Error(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockService := mock.NewMockAdminServiceInterface(ctrl)
+	handler := handlers.NewAdminHandler(mockService)
+
+	questionId := "1"
+
+	// Internal server error
+	mockService.EXPECT().DeleteQuestion(questionId).Return(errors.New("db error"))
+
+	req, _ := http.NewRequest("DELETE", "/admin/questions/"+questionId, nil)
+	rr := httptest.NewRecorder()
+	router := mux.NewRouter()
+	router.HandleFunc("/admin/questions/{ques_id}", handler.DeleteQuestion)
+	router.ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusInternalServerError {
+		t.Errorf("handler returned wrong status code: got %v want %v", status, http.StatusInternalServerError)
+	}
+}
+
+func TestAdminHandler_ReactivateUser(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockService := mock.NewMockAdminServiceInterface(ctrl)
+	handler := handlers.NewAdminHandler(mockService)
+
+	userId := "1"
+
+	// Internal server error
+	mockService.EXPECT().ReActivate(userId).Return(errors.New("db error"))
+
+	req, _ := http.NewRequest("POST", "/admin/users/"+userId+"/reactivate", nil)
+	rr := httptest.NewRecorder()
+	router := mux.NewRouter()
+	router.HandleFunc("/admin/users/{user_id}/reactivate", handler.ReactivateUser)
+
+	router.ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusInternalServerError {
+		t.Errorf("handler returned wrong status code: got %v want %v", status, http.StatusInternalServerError)
+	}
+
 }

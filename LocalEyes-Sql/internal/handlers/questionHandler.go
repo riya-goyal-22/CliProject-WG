@@ -24,7 +24,7 @@ func (handler *QuestionHandler) CreateQuestion(w http.ResponseWriter, r *http.Re
 	err := json.NewDecoder(r.Body).Decode(&question)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		response := utils.NewBadRequestError("Invalid JSON payload")
+		response := utils.NewBadRequestError("Invalid Request Body")
 		err = json.NewEncoder(w).Encode(response)
 		if err != nil {
 			utils.Logger.Error("ERROR: error encoding response")
@@ -33,7 +33,7 @@ func (handler *QuestionHandler) CreateQuestion(w http.ResponseWriter, r *http.Re
 	}
 	postId := mux.Vars(r)["post_id"]
 	bearerToken := r.Header.Get("Authorization")
-	claims, err := utils.ExtractClaims(bearerToken)
+	claims, err := utils.ExtractClaimsFunc(bearerToken)
 	id := claims["id"].(string)
 	//intId := int(id)
 	err = handler.service.AskQuestion(id, postId, question.Question)
@@ -108,7 +108,7 @@ func (handler *QuestionHandler) AddAnswer(w http.ResponseWriter, r *http.Request
 	err := json.NewDecoder(r.Body).Decode(&request)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		response := utils.NewBadRequestError("Invalid JSON payload")
+		response := utils.NewBadRequestError("Invalid Request Body")
 		err = json.NewEncoder(w).Encode(response)
 		if err != nil {
 			utils.Logger.Error("ERROR: error encoding response")
@@ -118,7 +118,7 @@ func (handler *QuestionHandler) AddAnswer(w http.ResponseWriter, r *http.Request
 	err = handler.service.AddAnswer(quesId, request.Answer)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		response := utils.NewInternalServerError("error while adding answer " + err.Error())
+		response := utils.NewInternalServerError("error while adding answer")
 		err = json.NewEncoder(w).Encode(response)
 		if err != nil {
 			utils.Logger.Error("ERROR: error encoding response")
@@ -140,7 +140,7 @@ func (handler *QuestionHandler) AddAnswer(w http.ResponseWriter, r *http.Request
 func (handler *QuestionHandler) DeleteQuestion(w http.ResponseWriter, r *http.Request) {
 	quesId := mux.Vars(r)["ques_id"]
 	bearerToken := r.Header.Get("Authorization")
-	claims, err := utils.ExtractClaims(bearerToken)
+	claims, err := utils.ExtractClaimsFunc(bearerToken)
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
 		response := utils.NewUnauthorizedError("Invalid Token")

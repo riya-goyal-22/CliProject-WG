@@ -19,7 +19,7 @@ func AuthenticationMiddleware(next http.Handler) http.Handler {
 			}
 			return
 		}
-		if !utils.ValidateToken(authHeader) {
+		if !utils.ValidateTokenFunc(authHeader) {
 			w.WriteHeader(http.StatusUnauthorized)
 			response := utils.NewUnauthorizedError("Invalid token")
 			err := json.NewEncoder(w).Encode(response)
@@ -45,7 +45,7 @@ func AdminAuthMiddleware(next http.Handler) http.Handler {
 			}
 			return
 		}
-		if !utils.ValidateAdminToken(authHeader) {
+		if !utils.ValidateAdminTokenFunc(authHeader) {
 			w.WriteHeader(http.StatusUnauthorized)
 			response := utils.NewUnauthorizedError("Invalid token")
 			err := json.NewEncoder(w).Encode(response)
