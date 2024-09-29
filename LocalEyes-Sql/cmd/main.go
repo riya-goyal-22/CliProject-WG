@@ -30,7 +30,7 @@ func main() {
 
 	router := mux.NewRouter()
 	userService := services.NewUserService(repositories.NewMySQLUserRepository(dbClient))
-	postService := services.NewPostService(repositories.NewMySQLPostRepository(dbClient), repositories.NewMySQLUserRepository(dbClient))
+	postService := services.NewPostService(repositories.NewMySQLPostRepository(dbClient), repositories.NewMySQLUserRepository(dbClient), repositories.NewMySQLQuestionRepository(dbClient))
 	questionService := services.NewQuestionService(repositories.NewMySQLQuestionRepository(dbClient))
 
 	adminService := services.NewAdminService(repositories.NewMySQLUserRepository(dbClient),

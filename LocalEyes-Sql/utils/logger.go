@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"errors"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"os"
@@ -29,14 +28,4 @@ func init() {
 		zap.NewAtomicLevelAt(zap.InfoLevel),
 	)
 	Logger = zap.New(core)
-
-}
-
-func Info(msg string, fields ...zap.Field) {
-	Logger.Info(msg, fields...)
-}
-
-func Error(msg string) {
-	err := errors.New(msg)
-	Logger.Error(msg, zap.String("context", "error"), zap.Error(err))
 }

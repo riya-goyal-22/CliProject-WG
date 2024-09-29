@@ -75,17 +75,19 @@ func TestPostHandler_CreatePost_ErrorCases(t *testing.T) {
 	handler := handlers.NewPostHandler(mockService)
 
 	tests := []struct {
-		name         string
-		body         string
-		mockSetup    func()
-		expectedCode int
-		expectedMsg  string
+		name                 string
+		body                 string
+		mockSetup            func()
+		expectedCode         int
+		expectedResponseCode int
+		expectedMsg          string
 	}{
 		{
-			name:         "Missing request body",
-			body:         "",
-			expectedCode: http.StatusBadRequest,
-			expectedMsg:  "Missing Request body",
+			name:                 "Missing request body",
+			body:                 "",
+			expectedCode:         http.StatusBadRequest,
+			expectedResponseCode: utils.InvalidRequest,
+			expectedMsg:          "Missing Request body",
 		},
 		{
 			name: "Invalid token",
@@ -95,8 +97,9 @@ func TestPostHandler_CreatePost_ErrorCases(t *testing.T) {
 					return nil, errors.New("invalid token")
 				}
 			},
-			expectedCode: http.StatusUnauthorized,
-			expectedMsg:  "Invalid token",
+			expectedCode:         http.StatusUnauthorized,
+			expectedResponseCode: utils.AuthError,
+			expectedMsg:          "Invalid token",
 		},
 		{
 			name: "Error creating post",
@@ -107,8 +110,9 @@ func TestPostHandler_CreatePost_ErrorCases(t *testing.T) {
 				}
 				mockService.EXPECT().CreatePost("userId", "Test Post", "This is a test.", "travel").Return(errors.New("database error"))
 			},
-			expectedCode: http.StatusInternalServerError,
-			expectedMsg:  "Error creating post",
+			expectedCode:         http.StatusInternalServerError,
+			expectedResponseCode: utils.DBError,
+			expectedMsg:          "Error creating post",
 		},
 		{
 			name: "invalid body",
@@ -119,8 +123,9 @@ func TestPostHandler_CreatePost_ErrorCases(t *testing.T) {
 				}
 				//mockService.EXPECT().CreatePost("userId", "", "This is a test.", "travel").Return(errors.New("database error"))
 			},
-			expectedCode: http.StatusBadRequest,
-			expectedMsg:  "required field 'title' is missing",
+			expectedCode:         http.StatusBadRequest,
+			expectedResponseCode: utils.InvalidRequest,
+			expectedMsg:          "required field 'title' is missing",
 		},
 	}
 
@@ -151,8 +156,8 @@ func TestPostHandler_CreatePost_ErrorCases(t *testing.T) {
 				t.Fatalf("failed to unmarshal actual response: %v", err)
 			}
 
-			if actualRes.Code != tt.expectedCode {
-				t.Errorf("handler returned wrong status code: got %v want %v", actualRes.Code, tt.expectedCode)
+			if actualRes.Code != tt.expectedResponseCode {
+				t.Errorf("handler returned wrong status code: got %v want %v", actualRes.Code, tt.expectedResponseCode)
 			}
 			if actualRes.Message != tt.expectedMsg {
 				t.Errorf("handler returned wrong message: got %v want %v", actualRes.Message, tt.expectedMsg)
@@ -306,23 +311,26 @@ func TestPostHandler_UpdatePost_ErrorCases(t *testing.T) {
 	handler := handlers.NewPostHandler(mockService)
 
 	tests := []struct {
-		name         string
-		body         string
-		mockSetup    func()
-		expectedCode int
-		expectedMsg  string
+		name                 string
+		body                 string
+		mockSetup            func()
+		expectedCode         int
+		expectedResponseCode int
+		expectedMsg          string
 	}{
 		{
-			name:         "Invalid/Missing request body",
-			body:         "",
-			expectedCode: http.StatusBadRequest,
-			expectedMsg:  "Invalid/Missing Request body",
+			name:                 "Invalid/Missing request body",
+			body:                 "",
+			expectedCode:         http.StatusBadRequest,
+			expectedResponseCode: utils.InvalidRequest,
+			expectedMsg:          "Invalid/Missing Request body",
 		},
 		{
-			name:         "Missing required fields",
-			body:         `{"title": "", "content": ""}`,
-			expectedCode: http.StatusBadRequest,
-			expectedMsg:  "Missing Required fields",
+			name:                 "Missing required fields",
+			body:                 `{"title": "", "content": ""}`,
+			expectedCode:         http.StatusBadRequest,
+			expectedResponseCode: utils.InvalidRequest,
+			expectedMsg:          "Missing Required fields",
 		},
 		{
 			name: "Invalid token",
@@ -332,8 +340,9 @@ func TestPostHandler_UpdatePost_ErrorCases(t *testing.T) {
 					return nil, errors.New("invalid token")
 				}
 			},
-			expectedCode: http.StatusUnauthorized,
-			expectedMsg:  "Invalid token",
+			expectedCode:         http.StatusUnauthorized,
+			expectedResponseCode: utils.AuthError,
+			expectedMsg:          "Invalid token",
 		},
 		{
 			name: "Error updating post",
@@ -344,8 +353,9 @@ func TestPostHandler_UpdatePost_ErrorCases(t *testing.T) {
 					return jwt.MapClaims{"id": "userId"}, nil
 				}
 			},
-			expectedCode: http.StatusInternalServerError,
-			expectedMsg:  "Error updating post",
+			expectedCode:         http.StatusInternalServerError,
+			expectedResponseCode: utils.DBError,
+			expectedMsg:          "Error updating post",
 		},
 		{
 			name: "Not your post",
@@ -356,8 +366,9 @@ func TestPostHandler_UpdatePost_ErrorCases(t *testing.T) {
 					return jwt.MapClaims{"id": "userId"}, nil
 				}
 			},
-			expectedCode: http.StatusNotFound,
-			expectedMsg:  "no post of yours exist with this id",
+			expectedCode:         http.StatusNotFound,
+			expectedResponseCode: utils.InvalidRequest,
+			expectedMsg:          "no post of yours exist with this id",
 		},
 	}
 
@@ -388,8 +399,8 @@ func TestPostHandler_UpdatePost_ErrorCases(t *testing.T) {
 				t.Fatalf("failed to unmarshal actual response: %v", err)
 			}
 
-			if actualRes.Code != tt.expectedCode {
-				t.Errorf("handler returned wrong status code: got %v want %v", actualRes.Code, tt.expectedCode)
+			if actualRes.Code != tt.expectedResponseCode {
+				t.Errorf("handler returned wrong status code: got %v want %v", actualRes.Code, tt.expectedResponseCode)
 			}
 			if actualRes.Message != tt.expectedMsg {
 				t.Errorf("handler returned wrong message: got %v want %v", actualRes.Message, tt.expectedMsg)
@@ -448,7 +459,7 @@ func TestPostHandler_DeletePost(t *testing.T) {
 
 	var notFoundResponse models.Response
 	json.NewDecoder(rr.Body).Decode(&notFoundResponse)
-	if notFoundResponse.Code != http.StatusNotFound {
+	if notFoundResponse.Code != 4400 {
 		t.Errorf("unexpected response: got %v", notFoundResponse)
 	}
 
@@ -466,7 +477,7 @@ func TestPostHandler_DeletePost(t *testing.T) {
 
 	var errorResponse models.Response
 	json.NewDecoder(rr.Body).Decode(&errorResponse)
-	if errorResponse.Code != http.StatusInternalServerError || errorResponse.Message != "Error deleting post" {
+	if errorResponse.Code != 5500 || errorResponse.Message != "Error deleting post" {
 		t.Errorf("unexpected response: got %v", errorResponse)
 	}
 }
@@ -479,12 +490,13 @@ func TestPostHandler_DisplayPosts_ErrorCases(t *testing.T) {
 	handler := handlers.NewPostHandler(mockService)
 
 	tests := []struct {
-		name         string
-		filter       string
-		limit        string
-		mockSetup    func()
-		expectedCode int
-		expectedMsg  string
+		name                 string
+		filter               string
+		limit                string
+		mockSetup            func()
+		expectedCode         int
+		expectedResponseCode int
+		expectedMsg          string
 	}{
 		{
 			name:   "Error fetching all posts",
@@ -492,8 +504,9 @@ func TestPostHandler_DisplayPosts_ErrorCases(t *testing.T) {
 			mockSetup: func() {
 				mockService.EXPECT().GiveAllPosts().Return(nil, errors.New("database error"))
 			},
-			expectedCode: http.StatusInternalServerError,
-			expectedMsg:  "Error displaying posts",
+			expectedCode:         http.StatusInternalServerError,
+			expectedResponseCode: utils.DBError,
+			expectedMsg:          "Error displaying posts",
 		},
 		{
 			name:   "Error fetching filtered posts",
@@ -501,14 +514,16 @@ func TestPostHandler_DisplayPosts_ErrorCases(t *testing.T) {
 			mockSetup: func() {
 				mockService.EXPECT().GiveFilteredPosts("food").Return(nil, errors.New("database error"))
 			},
-			expectedCode: http.StatusInternalServerError,
-			expectedMsg:  "Error displaying posts in filterdatabase error",
+			expectedCode:         http.StatusInternalServerError,
+			expectedResponseCode: utils.DBError,
+			expectedMsg:          "Error displaying posts in filterdatabase error",
 		},
 		{
-			name:         "Invalid filter",
-			filter:       "invalid",
-			expectedCode: http.StatusBadRequest,
-			expectedMsg:  "Invalid filter",
+			name:                 "Invalid filter",
+			filter:               "invalid",
+			expectedCode:         http.StatusBadRequest,
+			expectedResponseCode: utils.InvalidRequest,
+			expectedMsg:          "Invalid filter",
 		},
 	}
 
@@ -538,8 +553,8 @@ func TestPostHandler_DisplayPosts_ErrorCases(t *testing.T) {
 				t.Fatalf("failed to unmarshal actual response: %v", err)
 			}
 
-			if actualRes.Code != tt.expectedCode {
-				t.Errorf("handler returned wrong status code: got %v want %v", actualRes.Code, tt.expectedCode)
+			if actualRes.Code != tt.expectedResponseCode {
+				t.Errorf("handler returned wrong status code: got %v want %v", actualRes.Code, tt.expectedResponseCode)
 			}
 			if actualRes.Message != tt.expectedMsg {
 				t.Errorf("handler returned wrong message: got %v want %v", actualRes.Message, tt.expectedMsg)
@@ -630,7 +645,7 @@ func TestPostHandler_LikePost(t *testing.T) {
 
 	var notFoundResponse models.Response
 	json.NewDecoder(rr.Body).Decode(&notFoundResponse)
-	if notFoundResponse.Code != http.StatusNotFound {
+	if notFoundResponse.Code != 4400 {
 		t.Errorf("unexpected response: got %v", notFoundResponse)
 	}
 
@@ -647,7 +662,7 @@ func TestPostHandler_LikePost(t *testing.T) {
 
 	var errorResponse models.Response
 	json.NewDecoder(rr.Body).Decode(&errorResponse)
-	if errorResponse.Code != http.StatusInternalServerError || errorResponse.Message != "Error liking post" {
+	if errorResponse.Code != 5500 || errorResponse.Message != "Error liking post" {
 		t.Errorf("unexpected response: got %v", errorResponse)
 	}
 }
@@ -740,7 +755,7 @@ func TestPostHandler_DisplayPostById(t *testing.T) {
 
 	var notFoundResponse models.Response
 	json.NewDecoder(rr.Body).Decode(&notFoundResponse)
-	if notFoundResponse.Code != http.StatusNotFound || notFoundResponse.Message != "No Post found with that id" {
+	if notFoundResponse.Code != utils.InvalidRequest || notFoundResponse.Message != "No Post found with that id" {
 		t.Errorf("unexpected response: got %v", notFoundResponse)
 	}
 
@@ -757,7 +772,7 @@ func TestPostHandler_DisplayPostById(t *testing.T) {
 
 	var errorResponse models.Response
 	json.NewDecoder(rr.Body).Decode(&errorResponse)
-	if errorResponse.Code != http.StatusInternalServerError || errorResponse.Message != "Error getting post db error" {
+	if errorResponse.Code != utils.DBError || errorResponse.Message != "Error getting post db error" {
 		t.Errorf("unexpected response: got %v", errorResponse)
 	}
 }
@@ -831,10 +846,11 @@ func TestPostHandler_DisplayUserPosts_ErrorCases(t *testing.T) {
 	handler := handlers.NewPostHandler(mockService)
 
 	tests := []struct {
-		name         string
-		mockSetup    func()
-		expectedCode int
-		expectedMsg  string
+		name                 string
+		mockSetup            func()
+		expectedCode         int
+		expectedResponseCode int
+		expectedMsg          string
 	}{
 		{
 			name: "Unauthorized token",
@@ -843,8 +859,9 @@ func TestPostHandler_DisplayUserPosts_ErrorCases(t *testing.T) {
 					return nil, errors.New("invalid token")
 				}
 			},
-			expectedCode: http.StatusUnauthorized,
-			expectedMsg:  "Invalid token",
+			expectedCode:         http.StatusUnauthorized,
+			expectedResponseCode: utils.AuthError,
+			expectedMsg:          "Invalid token",
 		},
 		{
 			name: "Error fetching user posts",
@@ -854,8 +871,9 @@ func TestPostHandler_DisplayUserPosts_ErrorCases(t *testing.T) {
 				}
 				mockService.EXPECT().GiveMyPosts("userId").Return(nil, errors.New("database error"))
 			},
-			expectedCode: http.StatusInternalServerError,
-			expectedMsg:  "Error displaying posts",
+			expectedCode:         http.StatusInternalServerError,
+			expectedResponseCode: utils.DBError,
+			expectedMsg:          "Error displaying posts",
 		},
 	}
 
@@ -883,8 +901,8 @@ func TestPostHandler_DisplayUserPosts_ErrorCases(t *testing.T) {
 				t.Fatalf("failed to unmarshal actual response: %v", err)
 			}
 
-			if actualRes.Code != tt.expectedCode {
-				t.Errorf("handler returned wrong status code: got %v want %v", actualRes.Code, tt.expectedCode)
+			if actualRes.Code != tt.expectedResponseCode {
+				t.Errorf("handler returned wrong status code: got %v want %v", actualRes.Code, tt.expectedResponseCode)
 			}
 			if actualRes.Message != tt.expectedMsg {
 				t.Errorf("handler returned wrong message: got %v want %v", actualRes.Message, tt.expectedMsg)

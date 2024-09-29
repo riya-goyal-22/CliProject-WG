@@ -12,7 +12,7 @@ func ValidateUsername(username string, userRepo interfaces.UserRepository) bool 
 		return false
 	}
 	user, err := userRepo.FindByUsername(username)
-	if user == nil || err != nil {
+	if user == nil && err != nil {
 		return true
 	}
 	return false

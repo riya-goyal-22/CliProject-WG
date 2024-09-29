@@ -1,6 +1,8 @@
 package services
 
 import (
+	"database/sql"
+	"errors"
 	"localEyes/internal/interfaces"
 	"localEyes/internal/models"
 	"localEyes/utils"
@@ -8,14 +10,16 @@ import (
 )
 
 type PostService struct {
-	repo     interfaces.PostRepository
-	userRepo interfaces.UserRepository
+	repo         interfaces.PostRepository
+	userRepo     interfaces.UserRepository
+	questionRepo interfaces.QuestionRepository
 }
 
-func NewPostService(repo interfaces.PostRepository, userRepo interfaces.UserRepository) *PostService {
+func NewPostService(repo interfaces.PostRepository, userRepo interfaces.UserRepository, questionRepo interfaces.QuestionRepository) *PostService {
 	return &PostService{
-		repo:     repo,
-		userRepo: userRepo,
+		repo:         repo,
+		userRepo:     userRepo,
+		questionRepo: questionRepo,
 	}
 }
 
@@ -88,18 +92,39 @@ func (s *PostService) GiveFilteredPosts(filterType string) ([]*models.Post, erro
 	return posts, nil
 }
 
-//func (s *PostService) PostIdExist(pId string) (bool, error) {
-//	posts, err := s.repo.GetPostByPId(pId)
-//	if err != nil {
-//		return false, err
-//	}
-//	return len(posts) > 0, nil
-//}
-
 func (s *PostService) GivePostById(pId string) (*models.PostWithQuestions, error) {
 	post, err := s.repo.GetPostByPId(pId)
 	if err != nil {
 		return nil, err
 	}
-	return post, nil
+	postWithQuestion := &models.PostWithQuestions{
+		PostId:    post.PostId,
+		UId:       post.UId,
+		Type:      post.Type,
+		Title:     post.Title,
+		Content:   post.Content,
+		Likes:     post.Likes,
+		CreatedAt: post.CreatedAt,
+		Questions: nil,
+	}
+	questions, err := s.questionRepo.GetQuestionsByPId(pId)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return postWithQuestion, nil
+		}
+		return nil, err
+	}
+	var postQuestions []models.PostQuestion
+	if questions != nil {
+		for _, question := range questions {
+			postQuestion := models.PostQuestion{
+				QId:          question.QId,
+				QuestionText: question.Text,
+				Replies:      question.Replies,
+			}
+			postQuestions = append(postQuestions, postQuestion)
+		}
+	}
+	postWithQuestion.Questions = postQuestions
+	return postWithQuestion, nil
 }

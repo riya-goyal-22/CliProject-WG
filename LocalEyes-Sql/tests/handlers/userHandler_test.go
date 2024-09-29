@@ -100,13 +100,10 @@ func TestUserHandler_Login_Success(t *testing.T) {
 		t.Errorf("expected status 200, got %d", res.StatusCode)
 	}
 
-	var response struct {
-		Token string `json:"token"`
-		Code  int    `json:"code"`
-	}
+	var response models.Response
 	json.NewDecoder(res.Body).Decode(&response)
-	if response.Token != mockToken {
-		t.Errorf("expected token '%s', got '%s'", mockToken, response.Token)
+	if response.Data != mockToken {
+		t.Errorf("expected token '%s', got '%s'", mockToken, response.Data)
 	}
 }
 

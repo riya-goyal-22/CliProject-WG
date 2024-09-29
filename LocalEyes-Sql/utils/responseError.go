@@ -2,33 +2,36 @@ package utils
 
 import (
 	"localEyes/internal/models"
-	"net/http"
 )
+
+var DBError = 5500
+var AuthError = 3300
+var InvalidRequest = 4400
 
 func NewNotFoundError(message string) *models.Response {
 	return &models.Response{
 		Message: message,
-		Code:    http.StatusNotFound,
+		Code:    InvalidRequest,
 	}
 }
 
 func NewInternalServerError(message string) *models.Response {
 	return &models.Response{
 		Message: message,
-		Code:    http.StatusInternalServerError,
+		Code:    DBError,
 	}
 }
 
 func NewBadRequestError(message string) *models.Response {
 	return &models.Response{
 		Message: message,
-		Code:    http.StatusBadRequest,
+		Code:    InvalidRequest,
 	}
 }
 
 func NewUnauthorizedError(message string) *models.Response {
 	return &models.Response{
 		Message: message,
-		Code:    http.StatusUnauthorized,
+		Code:    AuthError,
 	}
 }

@@ -2,7 +2,6 @@ package middlewares_test
 
 import (
 	"encoding/json"
-	"github.com/stretchr/testify/assert"
 	"localEyes/internal/middlewares"
 	"localEyes/internal/models"
 	"localEyes/utils"
@@ -13,124 +12,156 @@ import (
 
 func TestAuthenticationMiddleware(t *testing.T) {
 	tests := []struct {
-		name            string
-		authHeader      string
-		expectedCode    int
-		expectedMessage string
-		mockSetup       func()
+		name         string
+		authHeader   string
+		expectedCode int
+		expectedBody *models.Response // Assuming this is the type for your error response
 	}{
 		{
-			name:            "Missing Authorization Header",
-			authHeader:      "",
-			expectedCode:    http.StatusUnauthorized,
-			expectedMessage: "Missing authentication token",
+			name:         "Missing token",
+			authHeader:   "",
+			expectedCode: http.StatusUnauthorized,
+			expectedBody: utils.NewUnauthorizedError("Missing authentication token"),
 		},
 		{
-			name:            "Invalid Token",
-			authHeader:      "Bearer invalidtoken",
-			expectedCode:    http.StatusUnauthorized,
-			expectedMessage: "Invalid token",
+			name:         "Invalid token",
+			authHeader:   "Bearer invalid_token",
+			expectedCode: http.StatusUnauthorized,
+			expectedBody: utils.NewUnauthorizedError("Invalid token"),
 		},
-		//{
-		//	name:            "Valid Token",
-		//	authHeader:      "Bearer validtoken",
-		//	expectedCode:    http.StatusOK,
-		//	expectedMessage: "",
-		//	mockSetup: func() {
-		//		utils.ValidateTokenFunc = func(token string) bool {
-		//			return true
-		//		}
-		//		defer func() { utils.ValidateTokenFunc = utils.ValidateToken }()
-		//	},
-		//},
+		{
+			name:         "Valid token",
+			authHeader:   "Bearer valid_token",
+			expectedCode: http.StatusOK,
+		},
 	}
-
-	//utils.NewUnauthorizedErrorFunc = func(message string) map[string]string {
-	//	return map[string]string{"error": message}
-	//}
-	//defer func(){ utils.NewUnauthorizedErrorFunc=utils.NewUnauthorizedError}()
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if tt.mockSetup != nil {
-				tt.mockSetup()
+			// Mock the ValidateTokenFunc
+			utils.ValidateTokenFunc = func(token string) bool {
+				if token == "Bearer valid_token" {
+					return true
+				}
+				return false
 			}
-			req := httptest.NewRequest("GET", "/some-endpoint", nil)
+
+			// Create a request
+			req, err := http.NewRequest("GET", "/test", nil)
+			if err != nil {
+				t.Fatalf("Failed to create request: %v", err)
+			}
 			if tt.authHeader != "" {
 				req.Header.Set("Authorization", tt.authHeader)
 			}
+
+			// Create a ResponseRecorder to capture the response
 			rr := httptest.NewRecorder()
 
+			// Create a test handler
 			handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				w.WriteHeader(http.StatusOK)
+				w.WriteHeader(http.StatusOK) // For valid token case
 			})
 
+			// Call the middleware
 			middleware := middlewares.AuthenticationMiddleware(handler)
 			middleware.ServeHTTP(rr, req)
 
-			var actualRes models.Response
-			if err := json.Unmarshal(rr.Body.Bytes(), &actualRes); err != nil {
-				t.Fatalf("failed to unmarshal actual response: %v", err)
+			// Check the status code
+			if rr.Code != tt.expectedCode {
+				t.Errorf("Expected status code %d, got %d", tt.expectedCode, rr.Code)
 			}
 
-			assert.Equal(t, tt.expectedCode, actualRes.Code)
-			assert.Equal(t, tt.expectedMessage, actualRes.Message)
+			// If we expect an error response, check the body
+			if tt.expectedCode == http.StatusUnauthorized {
+				var response models.Response
+				err := json.Unmarshal(rr.Body.Bytes(), &response)
+				if err != nil {
+					t.Errorf("Failed to unmarshal response: %v", err)
+				}
+
+				if response.Message != tt.expectedBody.Message {
+					t.Errorf("Expected message '%s', got '%s'", tt.expectedBody.Message, response.Message)
+				}
+			}
 		})
 	}
 }
 
 func TestAdminAuthMiddleware(t *testing.T) {
 	tests := []struct {
-		name            string
-		authHeader      string
-		expectedCode    int
-		expectedMessage string
+		name         string
+		authHeader   string
+		expectedCode int
+		expectedBody *models.Response // Assuming this is the type for your error response
 	}{
 		{
-			name:            "Missing Authorization Header",
-			authHeader:      "",
-			expectedCode:    http.StatusUnauthorized,
-			expectedMessage: "Missing authentication token",
+			name:         "Missing token",
+			authHeader:   "",
+			expectedCode: http.StatusUnauthorized,
+			expectedBody: utils.NewUnauthorizedError("Missing authentication token"),
 		},
 		{
-			name:            "Invalid Admin Token",
-			authHeader:      "Bearer invalidadmintoken",
-			expectedCode:    http.StatusUnauthorized,
-			expectedMessage: "Invalid token",
+			name:         "Invalid token",
+			authHeader:   "Bearer invalid_admin_token",
+			expectedCode: http.StatusUnauthorized,
+			expectedBody: utils.NewUnauthorizedError("Invalid token"),
+		},
+		{
+			name:         "Valid admin token",
+			authHeader:   "Bearer valid_admin_token",
+			expectedCode: http.StatusOK,
 		},
 	}
-
-	// Mock the utils functions for testing
-	utils.ValidateAdminTokenFunc = func(token string) bool {
-		return token == "Bearer validadmintoken"
-	}
-	defer func() { utils.ValidateAdminTokenFunc = utils.ValidateAdminToken }()
-	//utils.NewUnauthorizedError = func(message string) map[string]string {
-	//	return map[string]string{"error": message}
-	//}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			req := httptest.NewRequest("GET", "/admin-endpoint", nil)
+			// Mock the ValidateAdminTokenFunc
+			utils.ValidateAdminTokenFunc = func(token string) bool {
+				if token == "Bearer valid_admin_token" {
+					return true
+				}
+				return false
+			}
+
+			// Create a request
+			req, err := http.NewRequest("GET", "/admin/test", nil)
+			if err != nil {
+				t.Fatalf("Failed to create request: %v", err)
+			}
 			if tt.authHeader != "" {
 				req.Header.Set("Authorization", tt.authHeader)
 			}
+
+			// Create a ResponseRecorder to capture the response
 			rr := httptest.NewRecorder()
 
+			// Create a test handler
 			handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				w.WriteHeader(http.StatusOK)
+				w.WriteHeader(http.StatusOK) // For valid token case
 			})
 
+			// Call the middleware
 			middleware := middlewares.AdminAuthMiddleware(handler)
 			middleware.ServeHTTP(rr, req)
 
-			var actualRes models.Response
-			err := json.Unmarshal(rr.Body.Bytes(), &actualRes)
-			if err != nil {
-				t.Fatalf("failed to unmarshal actual response: %v", err)
+			// Check the status code
+			if rr.Code != tt.expectedCode {
+				t.Errorf("Expected status code %d, got %d", tt.expectedCode, rr.Code)
 			}
-			assert.Equal(t, tt.expectedCode, actualRes.Code)
-			assert.Equal(t, tt.expectedMessage, actualRes.Message)
+
+			// If we expect an error response, check the body
+			if tt.expectedCode == http.StatusUnauthorized {
+				var response models.Response
+				err := json.Unmarshal(rr.Body.Bytes(), &response)
+				if err != nil {
+					t.Errorf("Failed to unmarshal response: %v", err)
+				}
+
+				if response.Message != tt.expectedBody.Message {
+					t.Errorf("Expected message '%s', got '%s'", tt.expectedBody.Message, response.Message)
+				}
+			}
 		})
 	}
 }

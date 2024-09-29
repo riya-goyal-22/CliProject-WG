@@ -2,7 +2,6 @@ package repositories
 
 import (
 	"database/sql"
-	"encoding/json"
 	_ "github.com/go-sql-driver/mysql"
 	"localEyes/config"
 	"localEyes/internal/models"
@@ -162,15 +161,12 @@ func (r *MySQLPostRepository) GetPostsByUId(uId string) ([]*models.Post, error) 
 	return posts, nil
 }
 
-func (r *MySQLPostRepository) GetPostByPId(pId string) (*models.PostWithQuestions, error) {
-	columns := []string{"p.post_id", "p.uuid", "p.title", "p.type", "p.content", "p.likes", "p.created_at", "q.q_id", "q.text", "q.replies"}
-	condition1 := "p.post_id"
-	joinString := "LEFT JOIN questions q ON p.post_id = q.post_id"
-	//query := config.SelectQuery(config.PostTable, condition1, "", columns)
-	query := config.SelectQueryWithJoin(config.PostTable+" "+"p", condition1, "", joinString, columns)
+func (r *MySQLPostRepository) GetPostByPId(pId string) (*models.Post, error) {
+	columns := []string{"post_id", "uuid", "title", "type", "content", "likes", "created_at"}
+	condition1 := "post_id"
+	query := config.SelectQuery(config.PostTable, condition1, "", columns)
 	//query := "SELECT post_id, uuid, title,type, content, likes,created_at FROM posts WHERE post_id = ?"
-	var post models.PostWithQuestions
-	var questions []models.PostQuestion
+	var post models.Post
 	var createdAt string
 	rows, err := r.DB.Query(query, pId)
 	if err != nil {
@@ -178,25 +174,11 @@ func (r *MySQLPostRepository) GetPostByPId(pId string) (*models.PostWithQuestion
 	}
 	defer rows.Close()
 	for rows.Next() {
-		var question models.PostQuestion
-		var repliesJson []byte
-		err := rows.Scan(&post.PostId, &post.UId, &post.Title, &post.Type, &post.Content, &post.Likes, &createdAt,
-			&question.QId, &question.QuestionText, &repliesJson)
+		err := rows.Scan(&post.PostId, &post.UId, &post.Title, &post.Type, &post.Content, &post.Likes, &createdAt)
 		if err != nil {
 			return nil, err
 		}
-		if repliesJson != nil {
-			err = json.Unmarshal(repliesJson, &question.Replies)
-			if err != nil {
-				return nil, err
-			}
-		}
-		// Append question if it's not NULL
-		if question.QId != "" { // Assuming QId is 0 when there's no question
-			questions = append(questions, question)
-		}
 	}
-	post.Questions = questions
 	if createdAt != "" {
 		parsedTime, err := time.Parse("2006-01-02T15:04:05Z", createdAt)
 		if err != nil {

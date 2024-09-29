@@ -1,15 +1,10 @@
 package utils
 
 import (
-	"bufio"
 	"encoding/base64"
 	"errors"
-	"fmt"
 	"github.com/google/uuid"
-	"localEyes/config"
-	"localEyes/internal/interfaces"
-	"os"
-	"strconv"
+	"strings"
 )
 
 var NotYourPost = errors.New("no post of yours exist with this id")
@@ -18,53 +13,12 @@ var NoPost = errors.New("no post exist with this id")
 var NoQuestion = errors.New("no question exist with this id")
 var NoUser = errors.New("no user exist with this id")
 
-func PromptInput(prompt string) string {
-	// Create a new Scanner to read from standard input
-	scanner := bufio.NewScanner(os.Stdin)
-
-	// Display the prompt message
-	fmt.Print(config.Cyan + prompt + config.Reset)
-
-	// Read the next line of input
-	scanner.Scan()
-
-	// Get the text from the scanner
-	input := scanner.Text()
-	return input
-}
-
-func GetChoice() int {
-	fmt.Print("Enter choice: ")
-	var choice int
-	fmt.Scanln(&choice)
-	fmt.Println()
-	return choice
-}
-
-func PromptIntInput(prompt string) (int, error) {
-	scanner := bufio.NewScanner(os.Stdin)
-	fmt.Print(config.Cyan + prompt + config.Reset)
-	scanner.Scan()
-	input := scanner.Text()
-	//if err := scanner.Err(); err != nil {
-	//	return 0, errors.New("Error reading input")
-	//}
-	num, err := strconv.Atoi(input)
-	if err != nil {
-		return 0, err
-	}
-	return num, nil
-}
-
-func PromptPassword(promptInstance interfaces.PromptInterface) string {
-	result, err := promptInstance.Run()
-	if err != nil {
-		return ""
-	}
-	return result
-}
-
 func GenerateRandomId() string {
 	id := uuid.New()
-	return base64.RawStdEncoding.EncodeToString(id[:])[:4]
+	idString := base64.RawStdEncoding.EncodeToString(id[:])[:4]
+	if strings.Contains(idString, "/") {
+		idString = strings.Replace(idString, "/", "A", -1)
+		return idString
+	}
+	return idString
 }

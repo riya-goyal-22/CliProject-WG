@@ -159,11 +159,11 @@ func TestGetPostByPId(t *testing.T) {
 
 	repo := repositories.NewMySQLPostRepository(db)
 
-	columns := []string{"p.post_id", "p.uuid", "p.title", "p.type", "p.content", "p.likes", "p.created_at", "q.q_id", "q.text", "q.replies"}
+	columns := []string{"post_id", "uuid", "title", "type", "content", "likes", "created_at"}
 	rows := sqlmock.NewRows(columns).
-		AddRow("post-uuid", "user-uuid", "Test Post", "Type A", "Content", 10, "2024-09-22T16:52:56Z", "q1", "What is this?", nil)
+		AddRow("post-uuid", "user-uuid", "Test Post", "Type A", "Content", 10, "2024-09-22T16:52:56Z")
 
-	mock.ExpectQuery("SELECT p.post_id, p.uuid, p.title, p.type, p.content, p.likes, p.created_at, q.q_id, q.text, q.replies FROM posts p LEFT JOIN questions q ON p.post_id = q.post_id WHERE p.post_id = ?").
+	mock.ExpectQuery("SELECT post_id, uuid, title, type, content, likes, created_at FROM posts WHERE post_id = ?").
 		WithArgs("post-uuid").
 		WillReturnRows(rows)
 

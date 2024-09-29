@@ -62,7 +62,7 @@ func (handler *UserHandler) SignUp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusCreated)
-	utils.Info("User signed up successfully")
+	utils.Logger.Info("User signed up successfully")
 	response := &models.Response{
 		Message: "User created successfully",
 		Code:    http.StatusOK,
@@ -107,13 +107,11 @@ func (handler *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusOK)
-	utils.Info("User logged in successfully")
-	response := struct {
-		Token string `json:"token"`
-		Code  int    `json:"code"`
-	}{
-		Token: generatedToken,
-		Code:  http.StatusOK,
+	utils.Logger.Info("User logged in successfully")
+	response := models.Response{
+		Data:    generatedToken,
+		Code:    http.StatusOK,
+		Message: "User logged in successfully",
 	}
 	err = json.NewEncoder(w).Encode(response)
 	if err != nil {
@@ -147,7 +145,7 @@ func (handler *UserHandler) DeActivate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusOK)
-	utils.Info("User deactivated successfully")
+	utils.Logger.Info("User deactivated successfully")
 	response := &models.Response{
 		Message: "User Deactivated successfully",
 		Code:    http.StatusOK,
@@ -192,7 +190,7 @@ func (handler *UserHandler) ViewProfile(w http.ResponseWriter, r *http.Request) 
 		Tag:         user.Tag,
 	}
 	w.WriteHeader(http.StatusOK)
-	utils.Info("User viewed successfully")
+	utils.Logger.Info("User viewed successfully")
 	err = json.NewEncoder(w).Encode(response)
 	if err != nil {
 		utils.Logger.Error("ERROR: Error encoding response")
@@ -214,16 +212,7 @@ func (handler *UserHandler) ViewNotifications(w http.ResponseWriter, r *http.Req
 		return
 	}
 	id := claims["id"].(string)
-	//user, err := handler.service.GetUserById(id)
-	//if err != nil {
-	//	w.WriteHeader(http.StatusUnauthorized)
-	//	response := utils.NewUnauthorizedError("Unauthorized user")
-	//	err = json.NewEncoder(w).Encode(response)
-	//	if err != nil {
-	//		utils.Logger.Error("ERROR: Error encoding response")
-	//	}
-	//	return
-	//}
+
 	notifications, err := handler.service.GetNotifications(id)
 	if err != nil {
 		if errors.Is(err, utils.NoUser) {
@@ -249,20 +238,10 @@ func (handler *UserHandler) ViewNotifications(w http.ResponseWriter, r *http.Req
 		Data:    notifications,
 	}
 	w.WriteHeader(http.StatusOK)
-	utils.Info("User viewed successfully")
+	utils.Logger.Info("User viewed successfully")
 	err = json.NewEncoder(w).Encode(response)
 	if err != nil {
 		utils.Logger.Error("ERROR: Error encoding response")
 	}
-	//err = handler.service.UnNotifyUsers(id)
-	//if err != nil {
-	//	w.WriteHeader(http.StatusInternalServerError)
-	//	response := utils.NewInternalServerError("Error clearing notifications")
-	//	err = json.NewEncoder(w).Encode(response)
-	//	if err != nil {
-	//		utils.Logger.Error("ERROR: Error encoding response")
-	//	}
-	//	return
-	//}
-	//return
+
 }

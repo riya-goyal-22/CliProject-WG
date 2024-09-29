@@ -88,25 +88,28 @@ func TestQuestionHandler_CreateQuestion_ErrorCases(t *testing.T) {
 	handler := handlers.NewQuestionHandler(mockService)
 
 	tests := []struct {
-		name            string
-		body            interface{}
-		expectedCode    int
-		expectedMessage string
-		mockSetup       func()
+		name                 string
+		body                 interface{}
+		expectedCode         int
+		expectedResponseCode int
+		expectedMessage      string
+		mockSetup            func()
 	}{
 		{
-			name:            "Invalid JSON",
-			body:            "invalid body",
-			expectedCode:    http.StatusBadRequest,
-			expectedMessage: "Invalid Request Body",
+			name:                 "Invalid JSON",
+			body:                 "invalid body",
+			expectedCode:         http.StatusBadRequest,
+			expectedResponseCode: utils.InvalidRequest,
+			expectedMessage:      "Invalid Request Body",
 		},
 		{
 			name: "Internal Server Error",
 			body: models.RequestQuestion{
 				Question: "What is your favorite color?",
 			},
-			expectedCode:    http.StatusInternalServerError,
-			expectedMessage: "error while asking question",
+			expectedCode:         http.StatusInternalServerError,
+			expectedResponseCode: utils.DBError,
+			expectedMessage:      "error while asking question",
 			mockSetup: func() {
 				utils.ExtractClaimsFunc = func(bearerToken string) (jwt.MapClaims, error) {
 					return jwt.MapClaims{"id": "userId"}, nil
@@ -138,7 +141,7 @@ func TestQuestionHandler_CreateQuestion_ErrorCases(t *testing.T) {
 			if err := json.Unmarshal(rr.Body.Bytes(), &actualRes); err != nil {
 				t.Fatalf("failed to unmarshal actual response: %v", err)
 			}
-			assert.Equal(t, actualRes.Code, test.expectedCode)
+			assert.Equal(t, actualRes.Code, test.expectedResponseCode)
 			assert.Equal(t, actualRes.Message, test.expectedMessage)
 		})
 	}
