@@ -28,12 +28,27 @@ func SelectQuery(tableName, condition1, condition2 string, columns []string) str
 	return query
 }
 
+func SelectQueryWithJoin(tableName, condition1, condition2, joinString string, columns []string) string {
+	colNames := strings.Join(columns, ", ")
+	var query string
+	if condition1 == "" && condition2 == "" {
+		query = fmt.Sprintf("SELECT %s FROM %s %s", colNames, tableName, joinString)
+	}
+	if condition1 != "" && condition2 == "" {
+		query = fmt.Sprintf("SELECT %s FROM %s %s WHERE %s = ?", colNames, tableName, joinString, condition1)
+	}
+	if condition1 != "" && condition2 != "" {
+		query = fmt.Sprintf("SELECT %s FROM %s  %s WHERE %s = ?AND %s = ?", colNames, tableName, joinString, condition1, condition2)
+	}
+	return query
+}
+
 func DeleteQuery(tableName, condition1, condition2 string) string {
 	if condition2 == "" {
 		query := fmt.Sprintf("DELETE FROM %s WHERE %s = ?", tableName, condition1)
 		return query
 	}
-	query := fmt.Sprintf("DELETE FROM %s WHERE %s = ? AND %s = ?", tableName, condition1, condition2)
+	query := fmt.Sprintf("DELETE FROM %s WHERE %s= ? AND %s= ?", tableName, condition1, condition2)
 	return query
 }
 
@@ -53,9 +68,9 @@ func UpdateQuery(tableName, condition1, condition2 string, columns []string) str
 
 func UpdateQueryWithValue(tableName, condition1, condition2 string, columns string) string {
 	if condition2 == "" {
-		query := fmt.Sprintf("UPDATE %s SET %s WHERE %s", tableName, columns, condition1)
+		query := fmt.Sprintf("UPDATE %s SET %s WHERE %s=?", tableName, columns, condition1)
 		return query
 	}
-	query := fmt.Sprintf("UPDATE %s SET %s WHERE %s AND %s", tableName, columns, condition1, condition2)
+	query := fmt.Sprintf("UPDATE %s SET %s WHERE %s=? AND %s=?", tableName, columns, condition1, condition2)
 	return query
 }

@@ -5,9 +5,9 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"errors"
-	"localEyes/config"
 	"localEyes/internal/interfaces"
 	"localEyes/internal/models"
+	"localEyes/utils"
 )
 
 type UserService struct {
@@ -22,7 +22,7 @@ func (s *UserService) Signup(username, password string, dwellingAge int, tag str
 	hashedPassword := HashPassword(password)
 
 	user := &models.User{
-		//UId:          primitive.NewObjectID(),
+		//UId:          uuid.New().String(),
 		Username:     username,
 		Password:     hashedPassword,
 		City:         "delhi",
@@ -35,22 +35,21 @@ func (s *UserService) Signup(username, password string, dwellingAge int, tag str
 	return err
 }
 
-func (s *UserService) Login(Username, password string) (*models.User, error) {
+func (s *UserService) Login(username, password string) (*models.User, error) {
 	hashedPassword := HashPassword(password)
-	user, err := s.Repo.FindByUsernamePassword(Username, hashedPassword)
-	//user.NotifyChannel = make(chan string, 5)
+	user, err := s.Repo.FindByUsernamePassword(username, hashedPassword)
 	if err != nil {
-		return nil, errors.New(config.Red + "Invalid Account credentials" + config.Reset)
+		return nil, errors.New("invalid Account credentials")
 	} else if user == nil {
-		return nil, errors.New(config.Red + "Invalid Account credentials" + config.Reset)
+		return nil, errors.New("invalid Account credentials")
 	} else if user.IsActive == false {
-		return nil, errors.New(config.Red + "InActive Account" + config.Reset)
+		return nil, errors.New("inActive Account")
 	}
 	return user, nil
 }
 
-func (s *UserService) DeActivate(UId int) error {
-	err := s.Repo.UpdateActiveStatus(UId, false)
+func (s *UserService) DeActivate(uid string) error {
+	err := s.Repo.UpdateActiveStatus(uid, false)
 	if err != nil {
 		return err
 	}
@@ -63,14 +62,48 @@ func HashPassword(password string) string {
 	return hex.EncodeToString(hash.Sum(nil))
 }
 
-func (s *UserService) NotifyUsers(UId int, title string) error {
-	return s.Repo.PushNotification(UId, title)
+func (s *UserService) NotifyUsers(uid, title string) error {
+	return s.Repo.PushNotification(uid, title)
 }
 
-func (s *UserService) UnNotifyUsers(UId int) error {
-	err := s.Repo.ClearNotification(UId)
-	if errors.Is(err, sql.ErrNoRows) {
-		return nil
+//func (s *UserService) UnNotifyUsers(uid string) error {
+//	err := s.Repo.ClearNotification(uid)
+//	if errors.Is(err, sql.ErrNoRows) {
+//		return nil
+//	}
+//	return err
+//}
+
+func (s *UserService) GetNotifications(uid string) (*[]string, error) {
+	user, err := s.GetUserById(uid)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, utils.NoUser
+		}
+		return nil, err
 	}
-	return err
+	err = s.Repo.ClearNotification(uid)
+	if err != nil {
+		return nil, err
+	}
+	return &user.Notification, nil
+}
+
+func (s *UserService) GetUserById(uid string) (*models.User, error) {
+	user, err := s.Repo.FindByUId(uid)
+	if err != nil {
+		return nil, err
+	}
+	return user, nil
+}
+
+func (s *UserService) ValidateUsername(username string) bool {
+	if username == "admin" || username == "Admin" {
+		return false
+	}
+	user, err := s.Repo.FindByUsername(username)
+	if user == nil || err != nil {
+		return true
+	}
+	return false
 }

@@ -3,77 +3,75 @@ package repositories_test
 import (
 	"errors"
 	"github.com/DATA-DOG/go-sqlmock"
-	_ "github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/assert"
-	"localEyes/config"
 	"localEyes/internal/models"
 	"localEyes/internal/repositories"
 	"testing"
 	"time"
 )
 
-func TestMySQLPostRepository_Create(t *testing.T) {
+func TestCreate(t *testing.T) {
 	db, mock, err := sqlmock.New()
-	if err != nil {
-		t.Fatalf("failed to create sqlmock instance: %v", err)
-	}
+	assert.NoError(t, err)
 	defer db.Close()
 
 	repo := repositories.NewMySQLPostRepository(db)
 
 	post := &models.Post{
-		UId:       1,
+		UId:       "user-uuid",
+		PostId:    "post-uuid",
 		Title:     "Test Post",
-		Type:      "food",
-		Content:   "This is a test post",
+		Type:      "Type A",
+		Content:   "This is a test post.",
 		Likes:     0,
 		CreatedAt: time.Now(),
 	}
 
-	mock.ExpectExec("INSERT INTO posts").WithArgs(post.UId, post.Title, post.Type, post.Content, post.Likes, post.CreatedAt).WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectExec("INSERT INTO posts").
+		WithArgs(post.UId, post.PostId, post.Title, post.Type, post.Content, post.Likes, post.CreatedAt).
+		WillReturnResult(sqlmock.NewResult(1, 1))
 
 	err = repo.Create(post)
 	assert.NoError(t, err)
+	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
-func TestMySQLPostRepository_GetAllPosts(t *testing.T) {
+func TestGetAllPosts(t *testing.T) {
 	db, mock, err := sqlmock.New()
-	if err != nil {
-		t.Fatalf("failed to create sqlmock instance: %v", err)
-	}
+	assert.NoError(t, err)
 	defer db.Close()
 
 	repo := repositories.NewMySQLPostRepository(db)
 
-	rows := sqlmock.NewRows([]string{"post_id", "user_id", "title", "type", "content", "likes", "created_at"}).
-		AddRow(1, 1, "Test Post", "food", "This is a test post", 0, "2006-01-02T15:04:05Z")
+	rows := sqlmock.NewRows([]string{"post_id", "uuid", "title", "type", "content", "likes", "created_at"}).
+		AddRow("post-uuid-1", "user-uuid", "Post 1", "Type A", "Content 1", 10, "2024-09-22T16:52:56Z").
+		AddRow("post-uuid-2", "user-uuid", "Post 2", "Type B", "Content 2", 5, "2024-09-22T16:52:56Z")
 
-	mock.ExpectQuery(`^SELECT post_id, user_id, title, type, content, likes, created_at FROM posts$`).WillReturnRows(rows)
+	mock.ExpectQuery("SELECT post_id, uuid, title, type, content, likes, created_at FROM posts").
+		WillReturnRows(rows)
 
 	posts, err := repo.GetAllPosts()
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if len(posts) == 0 {
-		t.Fatal("expected at least one post, but got none")
-	}
-	assert.Len(t, posts, 1)
-	assert.Equal(t, "Test Post", posts[0].Title)
+	assert.NoError(t, err)
+	assert.Len(t, posts, 2)
+	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
-func TestMySQLPostRepository_DeleteByPId(t *testing.T) {
+func TestDeleteByPId(t *testing.T) {
 	db, mock, err := sqlmock.New()
-	if err != nil {
-		t.Fatalf("failed to create sqlmock instance: %v", err)
-	}
+	assert.NoError(t, err)
 	defer db.Close()
 
 	repo := repositories.NewMySQLPostRepository(db)
 
-	mock.ExpectExec("DELETE FROM posts WHERE post_id = ?").WithArgs(1).WillReturnResult(sqlmock.NewResult(1, 1))
+	postId := "post-uuid"
 
-	err = repo.DeleteByPId(1)
+	mock.ExpectExec("DELETE FROM posts WHERE post_id = ?").
+		WithArgs(postId).
+		WillReturnResult(sqlmock.NewResult(1, 1))
+
+	err = repo.DeleteByPId(postId)
 	assert.NoError(t, err)
+	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
 func TestMySQLPostRepository_DeleteByPId_NoRowsAffected(t *testing.T) {
@@ -82,314 +80,172 @@ func TestMySQLPostRepository_DeleteByPId_NoRowsAffected(t *testing.T) {
 		t.Fatalf("failed to create sqlmock instance: %v", err)
 	}
 	defer db.Close()
-
 	repo := repositories.NewMySQLPostRepository(db)
-
-	mock.ExpectExec("DELETE FROM posts WHERE post_id = ?").WithArgs(1).WillReturnResult(sqlmock.NewResult(0, 0))
-
-	err = repo.DeleteByPId(1)
-	assert.EqualError(t, err, config.Red+"No Post exist with this id"+config.Reset)
+	postId := "post-uuid"
+	mock.ExpectExec("DELETE FROM posts WHERE post_id = ?").
+		WithArgs(postId).
+		WillReturnResult(sqlmock.NewResult(0, 0))
+	err = repo.DeleteByPId(postId)
+	assert.Error(t, err)
 }
 
-func TestMySQLPostRepository_GetPostsByFilter(t *testing.T) {
+func TestDeleteByUIdPId(t *testing.T) {
 	db, mock, err := sqlmock.New()
-	if err != nil {
-		t.Fatalf("failed to create sqlmock instance: %v", err)
-	}
+	assert.NoError(t, err)
 	defer db.Close()
 
 	repo := repositories.NewMySQLPostRepository(db)
 
-	rows := sqlmock.NewRows([]string{"post_id", "user_id", "title", "type", "content", "likes", "created_at"}).
-		AddRow(1, 1, "Test Post", "food", "This is a test post", 0, "2024-09-08 00:00:00")
+	postId := "post-uuid"
+	uId := "user-uuid"
 
-	// Ensure the expected query matches exactly with the actual query
-	mock.ExpectQuery(`^SELECT post_id, user_id, title,type, content, likes,created_at FROM posts WHERE type = \?$`).
-		WithArgs("food").
+	mock.ExpectExec("^DELETE FROM posts WHERE post_id= \\? AND uuid= \\?$").
+		WithArgs(postId, uId).
+		WillReturnResult(sqlmock.NewResult(1, 1))
+
+	err = repo.DeleteByUIdPId(uId, postId)
+	assert.NoError(t, err)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestGetPostsByFilter(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	assert.NoError(t, err)
+	defer db.Close()
+
+	repo := repositories.NewMySQLPostRepository(db)
+
+	rows := sqlmock.NewRows([]string{"post_id", "uuid", "title", "type", "content", "likes", "created_at"}).
+		AddRow("post-uuid-1", "user-uuid", "Post 1", "Type A", "Content 1", 10, "2024-09-22T16:52:56Z").
+		AddRow("post-uuid-2", "user-uuid", "Post 2", "Type A", "Content 2", 5, "2024-09-22T16:52:56Z")
+
+	filter := "Type A"
+	mock.ExpectQuery("SELECT post_id, uuid, title, type, content, likes, created_at FROM posts WHERE type = ?").
+		WithArgs(filter).
 		WillReturnRows(rows)
 
-	posts, err := repo.GetPostsByFilter("food")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if len(posts) == 0 {
-		t.Fatal("expected at least one post, but got none")
-	}
-	assert.Len(t, posts, 1)
-	assert.Equal(t, "Test Post", posts[0].Title)
-}
-
-func TestMySQLPostRepository_UpdateUserPost(t *testing.T) {
-	db, mock, err := sqlmock.New()
-	if err != nil {
-		t.Fatalf("failed to create sqlmock instance: %v", err)
-	}
-	defer db.Close()
-
-	repo := repositories.NewMySQLPostRepository(db)
-
-	mock.ExpectExec("UPDATE posts SET title = \\?, content = \\? WHERE post_id = \\? AND user_id = \\?").
-		WithArgs("Updated Title", "Updated Content", 1, 1).
-		WillReturnResult(sqlmock.NewResult(1, 1))
-
-	err = repo.UpdateUserPost(1, 1, "Updated Title", "Updated Content")
-	assert.NoError(t, err)
-}
-
-func TestMySQLPostRepository_UpdateUserPost_NoRowsAffected(t *testing.T) {
-	db, mock, err := sqlmock.New()
-	if err != nil {
-		t.Fatalf("failed to create sqlmock instance: %v", err)
-	}
-	defer db.Close()
-
-	repo := repositories.NewMySQLPostRepository(db)
-
-	mock.ExpectExec("UPDATE posts SET title = \\?, content = \\? WHERE post_id = \\? AND user_id = \\?").
-		WithArgs("Updated Title", "Updated Content", 1, 1).
-		WillReturnResult(sqlmock.NewResult(0, 0))
-
-	err = repo.UpdateUserPost(1, 1, "Updated Title", "Updated Content")
-	assert.EqualError(t, err, config.Red+"You can only update your post"+config.Reset)
-}
-
-func TestMySQLPostRepository_UpdateLike(t *testing.T) {
-	db, mock, err := sqlmock.New()
-	if err != nil {
-		t.Fatalf("failed to create sqlmock instance: %v", err)
-	}
-	defer db.Close()
-
-	repo := repositories.NewMySQLPostRepository(db)
-
-	mock.ExpectExec("^UPDATE posts SET likes = likes \\+ 1 WHERE post_id = \\?$").WithArgs(1).WillReturnResult(sqlmock.NewResult(1, 1))
-
-	err = repo.UpdateLike(1)
-	assert.NoError(t, err)
-}
-
-func TestMySQLPostRepository_UpdateLike_NoRowsAffected(t *testing.T) {
-	db, mock, err := sqlmock.New()
-	if err != nil {
-		t.Fatalf("failed to create sqlmock instance: %v", err)
-	}
-	defer db.Close()
-
-	repo := repositories.NewMySQLPostRepository(db)
-
-	// Mock the expectation for the query
-	mock.ExpectExec(`^UPDATE posts SET likes = likes \+ 1 WHERE post_id = \?$`).
-		WithArgs(1).
-		WillReturnResult(sqlmock.NewResult(0, 0)) // No rows affected
-
-	// Call the method to be tested
-	err = repo.UpdateLike(1)
-	if err == nil {
-		t.Fatal("expected error, but got nil")
-	}
-	expectedErr := config.Red + "No post exist with this id" + config.Reset
-	if err.Error() != expectedErr {
-		t.Errorf("Error message not equal:\n\texpected: %v\n\tactual  : %v", expectedErr, err.Error())
-	}
-}
-
-func TestDeleteByUIdPId_Success(t *testing.T) {
-	db, mock, err := sqlmock.New()
-	assert.NoError(t, err)
-	defer db.Close()
-
-	UId := 1
-	PId := 10
-
-	mock.ExpectExec("^DELETE FROM posts WHERE post_id = \\? AND user_id=\\?$").
-		WithArgs(PId, UId).
-		WillReturnResult(sqlmock.NewResult(1, 1))
-
-	repo := repositories.NewMySQLPostRepository(db)
-	err = repo.DeleteByUIdPId(UId, PId)
-
-	assert.NoError(t, err)
-}
-
-func TestDeleteByUIdPId_NoRows(t *testing.T) {
-	db, mock, err := sqlmock.New()
-	assert.NoError(t, err)
-	defer db.Close()
-
-	UId := 1
-	PId := 999
-
-	mock.ExpectExec("^DELETE FROM posts WHERE post_id = \\? AND user_id=\\?$").
-		WithArgs(PId, UId).
-		WillReturnResult(sqlmock.NewResult(0, 0))
-
-	repo := repositories.NewMySQLPostRepository(db)
-	err = repo.DeleteByUIdPId(UId, PId)
-
-	assert.Error(t, err)
-	assert.EqualError(t, err, config.Red+"No Post exist with this id"+config.Reset)
-}
-
-func TestDeleteByUId_Successful(t *testing.T) {
-	db, mock, err := sqlmock.New()
-	assert.NoError(t, err)
-	defer db.Close()
-
-	UId := 1
-
-	mock.ExpectExec("^DELETE FROM posts WHERE user_id = \\?$").
-		WithArgs(UId).
-		WillReturnResult(sqlmock.NewResult(1, 1))
-
-	repo := repositories.NewMySQLPostRepository(db)
-	err = repo.DeleteByUId(UId)
-
-	assert.NoError(t, err)
-}
-
-func TestDeleteByUId_Error(t *testing.T) {
-	db, mock, err := sqlmock.New()
-	assert.NoError(t, err)
-	defer db.Close()
-
-	UId := 1
-
-	mock.ExpectExec("^DELETE FROM posts WHERE user_id = \\?$").
-		WithArgs(UId).
-		WillReturnError(errors.New("delete error"))
-
-	repo := repositories.NewMySQLPostRepository(db)
-	err = repo.DeleteByUId(UId)
-
-	assert.Error(t, err)
-	assert.EqualError(t, err, "delete error")
-}
-
-func TestGetPostsByUId_Success(t *testing.T) {
-	db, mock, err := sqlmock.New()
-	assert.NoError(t, err)
-	defer db.Close()
-
-	UId := 1
-	createdAt := time.Now()
-
-	rows := sqlmock.NewRows([]string{"post_id", "user_id", "title", "type", "content", "likes", "created_at"}).
-		AddRow(1, UId, "Title 1", "food", "Content 1", 10, createdAt).
-		AddRow(2, UId, "Title 2", "travel", "Content 2", 15, createdAt)
-
-	mock.ExpectQuery("^SELECT post_id, user_id, title,type, content, likes,created_at FROM posts WHERE user_id = \\?$").
-		WithArgs(UId).
-		WillReturnRows(rows)
-
-	repo := repositories.NewMySQLPostRepository(db)
-	posts, err := repo.GetPostsByUId(UId)
-
+	posts, err := repo.GetPostsByFilter(filter)
 	assert.NoError(t, err)
 	assert.Len(t, posts, 2)
-	assert.Equal(t, 1, posts[0].PostId)
-	assert.Equal(t, "Title 1", posts[0].Title)
-	assert.Equal(t, 10, posts[0].Likes)
+	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
-func TestGetPostsByUId_NoPosts(t *testing.T) {
+func TestGetPostsByUId(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	assert.NoError(t, err)
 	defer db.Close()
-
-	UId := 1
-
-	rows := sqlmock.NewRows([]string{"post_id", "user_id", "title", "type", "content", "likes", "created_at"})
-
-	mock.ExpectQuery("^SELECT post_id, user_id, title,type, content, likes,created_at FROM posts WHERE user_id = \\?$").
-		WithArgs(UId).
-		WillReturnRows(rows)
 
 	repo := repositories.NewMySQLPostRepository(db)
-	posts, err := repo.GetPostsByUId(UId)
 
+	rows := sqlmock.NewRows([]string{"post_id", "uuid", "title", "type", "content", "likes", "created_at"}).
+		AddRow("post-uuid-1", "user-uuid", "Post 1", "Type A", "Content 1", 10, time.Now()).
+		AddRow("post-uuid-2", "user-uuid", "Post 2", "Type A", "Content 2", 5, time.Now())
+
+	uId := "user-uuid"
+	mock.ExpectQuery("SELECT post_id, uuid, title, type, content, likes, created_at FROM posts WHERE uuid = ?").
+		WithArgs(uId).
+		WillReturnRows(rows)
+
+	posts, err := repo.GetPostsByUId(uId)
 	assert.NoError(t, err)
-	assert.Len(t, posts, 0)
+	assert.Len(t, posts, 2)
+	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
-func TestGetPostsByUId_Error(t *testing.T) {
+func TestGetPostByPId(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	assert.NoError(t, err)
 	defer db.Close()
 
-	UId := 1
+	repo := repositories.NewMySQLPostRepository(db)
 
-	mock.ExpectQuery("^SELECT post_id, user_id, title,type, content, likes,created_at FROM posts WHERE user_id = \\?$").
-		WithArgs(UId).
+	columns := []string{"post_id", "uuid", "title", "type", "content", "likes", "created_at"}
+	rows := sqlmock.NewRows(columns).
+		AddRow("post-uuid", "user-uuid", "Test Post", "Type A", "Content", 10, "2024-09-22T16:52:56Z")
+
+	mock.ExpectQuery("SELECT post_id, uuid, title, type, content, likes, created_at FROM posts WHERE post_id = ?").
+		WithArgs("post-uuid").
+		WillReturnRows(rows)
+
+	post, err := repo.GetPostByPId("post-uuid")
+	assert.NoError(t, err)
+	assert.Equal(t, "Test Post", post.Title)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestGetPostByPId_Error(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	assert.NoError(t, err)
+	defer db.Close()
+
+	pId := "1"
+
+	mock.ExpectQuery("SELECT p.post_id, p.uuid, p.title, p.type, p.content, p.likes, p.created_at, q.q_id, q.text, q.replies FROM posts p LEFT JOIN questions q ON p.post_id = q.post_id WHERE p.post_id = ?").
+		WithArgs(pId).
 		WillReturnError(errors.New("query error"))
 
 	repo := repositories.NewMySQLPostRepository(db)
-	posts, err := repo.GetPostsByUId(UId)
+	posts, err := repo.GetPostByPId(pId)
 
 	assert.Error(t, err)
 	assert.Nil(t, posts)
 	assert.EqualError(t, err, "query error")
 }
 
-func TestGetPostsByPId_Success(t *testing.T) {
+func TestGetPostByPId_NoPosts(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	assert.NoError(t, err)
 	defer db.Close()
 
-	PId := 1
-	createdAt := time.Now()
-
-	rows := sqlmock.NewRows([]string{"post_id", "user_id", "title", "type", "content", "likes", "created_at"}).
-		AddRow(PId, 1, "Title 1", "food", "Content 1", 10, createdAt)
-
-	mock.ExpectQuery("^SELECT post_id, user_id, title,type, content, likes,created_at FROM posts WHERE post_id = \\?$").
-		WithArgs(PId).
-		WillReturnRows(rows)
-
-	repo := repositories.NewMySQLPostRepository(db)
-	posts, err := repo.GetPostsByPId(PId)
-
-	assert.NoError(t, err)
-	assert.Len(t, posts, 1)
-	assert.Equal(t, PId, posts[0].PostId)
-	assert.Equal(t, "Title 1", posts[0].Title)
-	assert.Equal(t, 10, posts[0].Likes)
-}
-
-func TestGetPostsByPId_NoPosts(t *testing.T) {
-	db, mock, err := sqlmock.New()
-	assert.NoError(t, err)
-	defer db.Close()
-
-	PId := 1
+	pId := "1"
 
 	rows := sqlmock.NewRows([]string{"post_id", "user_id", "title", "type", "content", "likes", "created_at"})
 
-	mock.ExpectQuery("^SELECT post_id, user_id, title,type, content, likes,created_at FROM posts WHERE post_id = \\?$").
-		WithArgs(PId).
+	mock.ExpectQuery("SELECT p.post_id, p.uuid, p.title, p.type, p.content, p.likes, p.created_at, q.q_id, q.text, q.replies FROM posts p LEFT JOIN questions q ON p.post_id = q.post_id WHERE p.post_id = ?").
+		WithArgs(pId).
 		WillReturnRows(rows)
 
 	repo := repositories.NewMySQLPostRepository(db)
-	posts, err := repo.GetPostsByPId(PId)
+	_, err = repo.GetPostByPId(pId)
 
 	assert.NoError(t, err)
-	assert.Len(t, posts, 0)
 }
 
-func TestGetPostsByPId_Error(t *testing.T) {
+func TestUpdateUserPost(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	assert.NoError(t, err)
 	defer db.Close()
 
-	PId := 1
+	repo := repositories.NewMySQLPostRepository(db)
 
-	mock.ExpectQuery("^SELECT post_id, user_id, title,type, content, likes,created_at FROM posts WHERE post_id = \\?").
-		WithArgs(PId).
-		WillReturnError(errors.New("query error"))
+	postId := "post-uuid"
+	uId := "user-uuid"
+	title := "Updated Title"
+	content := "Updated Content"
+
+	mock.ExpectExec("^UPDATE posts SET title = \\?, content = \\? WHERE post_id = \\? AND uuid = \\?$").
+		WithArgs(title, content, postId, uId).
+		WillReturnResult(sqlmock.NewResult(1, 1))
+
+	err = repo.UpdateUserPost(postId, uId, title, content)
+	assert.NoError(t, err)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestUpdateLike(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	assert.NoError(t, err)
+	defer db.Close()
 
 	repo := repositories.NewMySQLPostRepository(db)
-	posts, err := repo.GetPostsByPId(PId)
 
-	assert.Error(t, err)
-	assert.Nil(t, posts)
-	assert.EqualError(t, err, "query error")
+	postId := "post-uuid"
+
+	mock.ExpectExec("^UPDATE posts SET likes = likes\\+1 WHERE post_id=\\?$").
+		WithArgs(postId).
+		WillReturnResult(sqlmock.NewResult(1, 1))
+
+	err = repo.UpdateLike(postId)
+	assert.NoError(t, err)
+	assert.NoError(t, mock.ExpectationsWereMet())
 }

@@ -7,9 +7,9 @@ import (
 type QuestionRepository interface {
 	Create(question *models.Question) error
 	GetAllQuestions() ([]*models.Question, error)
-	DeleteByQIdUId(QId, UId int) error
-	DeleteByPId(PId int) error
-	GetQuestionsByPId(PId int) ([]*models.Question, error)
-	UpdateQuestion(QId int, answer string) error
-	DeleteByQId(QId int) error
+	DeleteByQIdUId(qId string, uId string) error
+	DeleteByPId(pId string) error
+	DeleteByQId(qId string) error
+	GetQuestionsByPId(pId string) ([]*models.Question, error)
+	UpdateQuestion(qId string, answer string) error
 }

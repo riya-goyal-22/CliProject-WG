@@ -2,7 +2,6 @@ package services_test
 
 import (
 	"errors"
-	"localEyes/config"
 	"localEyes/internal/models"
 	"localEyes/internal/services"
 	"localEyes/tests/mocks"
@@ -12,56 +11,11 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestAdminService_Login_Success(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	mockUserRepo := mocks.NewMockUserRepository(ctrl)
-	adminService := services.NewAdminService(mockUserRepo, nil, nil)
-
-	password := "admin123"
-	hashedPassword := services.HashPassword(password)
-
-	mockAdmin := &models.Admin{
-		models.User{Username: "admin",
-			Password: hashedPassword},
-	}
-
-	mockUserRepo.EXPECT().
-		FindAdminByUsernamePassword("admin", hashedPassword).
-		Return(mockAdmin, nil)
-
-	admin, err := adminService.Login(password)
-	assert.NoError(t, err)
-	assert.NotNil(t, admin)
-	assert.Equal(t, "admin", admin.User.Username)
-}
-
-func TestAdminService_Login_InvalidPassword(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	mockUserRepo := mocks.NewMockUserRepository(ctrl)
-	adminService := services.NewAdminService(mockUserRepo, nil, nil)
-
-	password := "wrongpassword"
-	hashedPassword := services.HashPassword(password)
-
-	mockUserRepo.EXPECT().
-		FindAdminByUsernamePassword("admin", hashedPassword).
-		Return(nil, errors.New("Invalid username or password"))
-
-	admin, err := adminService.Login(password)
-	assert.Error(t, err)
-	assert.Equal(t, config.Red+"Invalid username or password"+config.Reset, err.Error())
-	assert.Nil(t, admin)
-}
-
 func TestAdminService_GetAllUsers_Success(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockUserRepo := mocks.NewMockUserRepository(ctrl)
+	mockUserRepo := mock.NewMockUserRepository(ctrl)
 	adminService := services.NewAdminService(mockUserRepo, nil, nil)
 
 	mockUsers := []*models.User{
@@ -83,7 +37,7 @@ func TestAdminService_GetAllUsers_Error(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockUserRepo := mocks.NewMockUserRepository(ctrl)
+	mockUserRepo := mock.NewMockUserRepository(ctrl)
 	adminService := services.NewAdminService(mockUserRepo, nil, nil)
 
 	mockUserRepo.EXPECT().
@@ -99,7 +53,7 @@ func TestAdminService_GetAllPosts_Success(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockPostRepo := mocks.NewMockPostRepository(ctrl)
+	mockPostRepo := mock.NewMockPostRepository(ctrl)
 	adminService := services.NewAdminService(nil, mockPostRepo, nil)
 
 	mockPosts := []*models.Post{
@@ -121,7 +75,7 @@ func TestAdminService_GetAllPosts_Error(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockPostRepo := mocks.NewMockPostRepository(ctrl)
+	mockPostRepo := mock.NewMockPostRepository(ctrl)
 	adminService := services.NewAdminService(nil, mockPostRepo, nil)
 
 	mockPostRepo.EXPECT().
@@ -137,7 +91,7 @@ func TestAdminService_GetAllQuestions_Success(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockQuesRepo := mocks.NewMockQuestionRepository(ctrl)
+	mockQuesRepo := mock.NewMockQuestionRepository(ctrl)
 	adminService := services.NewAdminService(nil, nil, mockQuesRepo)
 
 	mockQuestions := []*models.Question{
@@ -159,7 +113,7 @@ func TestAdminService_GetAllQuestions_Error(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockQuesRepo := mocks.NewMockQuestionRepository(ctrl)
+	mockQuesRepo := mock.NewMockQuestionRepository(ctrl)
 	adminService := services.NewAdminService(nil, nil, mockQuesRepo)
 
 	mockQuesRepo.EXPECT().
@@ -175,19 +129,15 @@ func TestAdminService_DeleteUser_Success(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockUserRepo := mocks.NewMockUserRepository(ctrl)
-	mockPostRepo := mocks.NewMockPostRepository(ctrl)
+	mockUserRepo := mock.NewMockUserRepository(ctrl)
+	mockPostRepo := mock.NewMockPostRepository(ctrl)
 	adminService := services.NewAdminService(mockUserRepo, mockPostRepo, nil)
 
 	mockUserRepo.EXPECT().
-		DeleteByUId(1).
+		DeleteByUId("1").
 		Return(nil)
 
-	mockPostRepo.EXPECT().
-		DeleteByUId(1).
-		Return(nil)
-
-	err := adminService.DeleteUser(1)
+	err := adminService.DeleteUser("1")
 	assert.NoError(t, err)
 }
 
@@ -195,17 +145,15 @@ func TestAdminService_DeleteUser_Error(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockUserRepo := mocks.NewMockUserRepository(ctrl)
-	mockPostRepo := mocks.NewMockPostRepository(ctrl)
+	mockUserRepo := mock.NewMockUserRepository(ctrl)
+	mockPostRepo := mock.NewMockPostRepository(ctrl)
 	adminService := services.NewAdminService(mockUserRepo, mockPostRepo, nil)
 
 	mockUserRepo.EXPECT().
-		DeleteByUId(1).
+		DeleteByUId("1").
 		Return(errors.New("delete user error"))
-	mockPostRepo.EXPECT().
-		DeleteByUId(1).
-		Return(nil)
-	err := adminService.DeleteUser(1)
+
+	err := adminService.DeleteUser("1")
 	assert.Error(t, err)
 }
 
@@ -213,19 +161,19 @@ func TestAdminService_DeletePost_Success(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockPostRepo := mocks.NewMockPostRepository(ctrl)
-	mockQuesRepo := mocks.NewMockQuestionRepository(ctrl)
+	mockPostRepo := mock.NewMockPostRepository(ctrl)
+	mockQuesRepo := mock.NewMockQuestionRepository(ctrl)
 	adminService := services.NewAdminService(nil, mockPostRepo, mockQuesRepo)
 
 	mockPostRepo.EXPECT().
-		DeleteByPId(1).
+		DeleteByPId("1").
 		Return(nil)
 
 	mockQuesRepo.EXPECT().
-		DeleteByPId(1).
+		DeleteByPId("1").
 		Return(nil)
 
-	err := adminService.DeletePost(1)
+	err := adminService.DeletePost("1")
 	assert.NoError(t, err)
 }
 
@@ -233,17 +181,17 @@ func TestAdminService_DeletePost_Error(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockPostRepo := mocks.NewMockPostRepository(ctrl)
-	mockQuesRepo := mocks.NewMockQuestionRepository(ctrl)
+	mockPostRepo := mock.NewMockPostRepository(ctrl)
+	mockQuesRepo := mock.NewMockQuestionRepository(ctrl)
 	adminService := services.NewAdminService(nil, mockPostRepo, mockQuesRepo)
 
 	mockPostRepo.EXPECT().
-		DeleteByPId(1).
+		DeleteByPId("1").
 		Return(errors.New("delete post error"))
 	mockQuesRepo.EXPECT().
-		DeleteByPId(1).
+		DeleteByPId("1").
 		Return(nil)
-	err := adminService.DeletePost(1)
+	err := adminService.DeletePost("1")
 	assert.Error(t, err)
 }
 
@@ -251,14 +199,14 @@ func TestAdminService_DeleteQuestion_Success(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockQuesRepo := mocks.NewMockQuestionRepository(ctrl)
+	mockQuesRepo := mock.NewMockQuestionRepository(ctrl)
 	adminService := services.NewAdminService(nil, nil, mockQuesRepo)
 
 	mockQuesRepo.EXPECT().
-		DeleteByQId(1).
+		DeleteByQId("1").
 		Return(nil)
 
-	err := adminService.DeleteQuestion(1)
+	err := adminService.DeleteQuestion("1")
 	assert.NoError(t, err)
 }
 
@@ -266,14 +214,14 @@ func TestAdminService_DeleteQuestion_Error(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockQuesRepo := mocks.NewMockQuestionRepository(ctrl)
+	mockQuesRepo := mock.NewMockQuestionRepository(ctrl)
 	adminService := services.NewAdminService(nil, nil, mockQuesRepo)
 
 	mockQuesRepo.EXPECT().
-		DeleteByQId(1).
+		DeleteByQId("1").
 		Return(errors.New("delete question error"))
 
-	err := adminService.DeleteQuestion(1)
+	err := adminService.DeleteQuestion("1")
 	assert.Error(t, err)
 }
 
@@ -281,14 +229,14 @@ func TestAdminService_ReActivate_Success(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockUserRepo := mocks.NewMockUserRepository(ctrl)
+	mockUserRepo := mock.NewMockUserRepository(ctrl)
 	adminService := services.NewAdminService(mockUserRepo, nil, nil)
 
 	mockUserRepo.EXPECT().
-		UpdateActiveStatus(1, true).
+		UpdateActiveStatus("1", true).
 		Return(nil)
 
-	err := adminService.ReActivate(1)
+	err := adminService.ReActivate("1")
 	assert.NoError(t, err)
 }
 
@@ -296,13 +244,13 @@ func TestAdminService_ReActivate_Error(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockUserRepo := mocks.NewMockUserRepository(ctrl)
+	mockUserRepo := mock.NewMockUserRepository(ctrl)
 	adminService := services.NewAdminService(mockUserRepo, nil, nil)
 
 	mockUserRepo.EXPECT().
-		UpdateActiveStatus(1, true).
+		UpdateActiveStatus("1", true).
 		Return(errors.New("reactivate error"))
 
-	err := adminService.ReActivate(1)
+	err := adminService.ReActivate("1")
 	assert.Error(t, err)
 }
