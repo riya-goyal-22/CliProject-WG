@@ -69,12 +69,12 @@ func main() {
 	adminRouter.HandleFunc("/user/{user_id}", adminHandler.DeleteUser).Methods("DELETE")
 	adminRouter.HandleFunc("/post/{post_id}", adminHandler.DeletePost).Methods("DELETE")
 	adminRouter.HandleFunc("/question/{ques_id}", adminHandler.DeleteQuestion).Methods("DELETE")
-	adminRouter.HandleFunc("reactivate/user/{user_id}", adminHandler.ReactivateUser).Methods("POST")
+	adminRouter.HandleFunc("/reactivate/user/{user_id}", adminHandler.ReactivateUser).Methods("POST")
 
 	//ui.RootCli(userService, postService, questionService, adminService)
 	err := http.ListenAndServe(":8000", router)
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println(config.Magenta + "Thank you 😊, Visit Again" + config.Reset)
+	fmt.Println("Thank you 😊, Visit Again")
 }

@@ -3,7 +3,6 @@ package repositories
 import (
 	"database/sql"
 	"encoding/json"
-	"errors"
 	_ "github.com/go-sql-driver/mysql"
 	"localEyes/config"
 	"localEyes/internal/models"
@@ -159,7 +158,7 @@ func (r *MySQLQuestionRepository) UpdateQuestion(qId string, answer string) erro
 			return err
 		}
 		if affectedRows == 0 {
-			return errors.New(config.Red + "No Question exist with this id" + config.Reset)
+			return utils.NoQuestion
 		}
 	}
 	return err

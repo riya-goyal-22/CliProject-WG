@@ -1,15 +1,15 @@
 package config
 
 const (
-	Reset         = "\033[0m"
-	Red           = "\033[31m"
-	Green         = "\033[32m"
-	Yellow        = "\033[33m"
-	Blue          = "\033[34m"
-	Magenta       = "\033[35m"
-	Cyan          = "\033[36m"
-	Gray          = "\033[37m"
-	UserTable     = "users"
-	PostTable     = "posts"
-	QuestionTable = "questions"
+	UserTable            = "users"
+	PostTable            = "posts"
+	QuestionTable        = "questions"
+	Select               = "SELECT %s FROM %s"
+	SelectWithCondition  = "SELECT %s FROM %s WHERE %s = ?"
+	SelectWith2Condition = "SELECT %s FROM %s WHERE %s = ? AND %s = ?"
+	Insert               = "INSERT INTO %s (%s) VALUES (%s)"
+	Update               = "UPDATE %s SET %s WHERE %s = ?"
+	UpdateWith2Condition = "UPDATE %s SET %s WHERE %s = ? AND %s = ?"
+	Delete               = "DELETE FROM %s WHERE %s = ?"
+	DeleteWith2Condition = "DELETE FROM %s WHERE %s= ? AND %s= ?"
 )
