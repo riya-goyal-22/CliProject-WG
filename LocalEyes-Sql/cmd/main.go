@@ -6,6 +6,7 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
+	"github.com/rs/cors"
 	"localEyes/config"
 	"localEyes/internal/handlers"
 	"localEyes/internal/middlewares"
@@ -27,7 +28,6 @@ func init() {
 
 func main() {
 	defer config.CloseDBClient()
-
 	router := mux.NewRouter()
 	userService := services.NewUserService(repositories.NewMySQLUserRepository(dbClient))
 	postService := services.NewPostService(repositories.NewMySQLPostRepository(dbClient), repositories.NewMySQLUserRepository(dbClient), repositories.NewMySQLQuestionRepository(dbClient))
@@ -44,16 +44,20 @@ func main() {
 
 	router.HandleFunc("/signup", userHandler.SignUp).Methods("POST")
 	router.HandleFunc("/login", userHandler.Login).Methods("POST")
+	router.HandleFunc("/forget-password", userHandler.ResetPassword).Methods("POST")
 
 	apiRouter := router.PathPrefix("/api").Subrouter()
 	apiRouter.Use(middlewares.AuthenticationMiddleware)
 	apiRouter.HandleFunc("/user/deactivate", userHandler.DeActivate).Methods("POST")
 	apiRouter.HandleFunc("/user/profile", userHandler.ViewProfile).Methods("GET")
 	apiRouter.HandleFunc("/user/notification", userHandler.ViewNotifications).Methods("GET")
+	apiRouter.HandleFunc("/user/{user_id}", userHandler.GetUserById).Methods("GET")
+	apiRouter.HandleFunc("/user/{user_id}", userHandler.UpdateUserById).Methods("PUT")
 	apiRouter.HandleFunc("/posts/all", postHandler.DisplayPosts).Methods("GET")
 	apiRouter.HandleFunc("/post", postHandler.CreatePost).Methods("POST")
 	apiRouter.HandleFunc("/post/{post_id}", postHandler.DisplayPostById).Methods("GET")
 	apiRouter.HandleFunc("/post/{post_id}/like", postHandler.LikePost).Methods("POST")
+	apiRouter.HandleFunc("/post/{post_id}/dislike", postHandler.DislikePost).Methods("POST")
 	apiRouter.HandleFunc("/user/posts/all", postHandler.DisplayUserPosts).Methods("GET")
 	apiRouter.HandleFunc("/user/post/{post_id}", postHandler.UpdatePost).Methods("PUT")
 	apiRouter.HandleFunc("/user/post/{post_id}", postHandler.DeletePost).Methods("DELETE")
@@ -71,8 +75,16 @@ func main() {
 	adminRouter.HandleFunc("/question/{ques_id}", adminHandler.DeleteQuestion).Methods("DELETE")
 	adminRouter.HandleFunc("/reactivate/user/{user_id}", adminHandler.ReactivateUser).Methods("POST")
 
+	c := cors.New(cors.Options{
+		AllowedOrigins:   []string{"http://localhost:4200"},
+		AllowedMethods:   []string{"GET", "POST", "OPTIONS", "PUT", "DELETE"},
+		AllowedHeaders:   []string{"Content-Type", "Authorization"},
+		AllowCredentials: true,
+	})
+
 	//ui.RootCli(userService, postService, questionService, adminService)
-	err := http.ListenAndServe(":8000", router)
+	corsRouter := c.Handler(router)
+	err := http.ListenAndServe(":8000", corsRouter)
 	if err != nil {
 		log.Fatal(err)
 	}

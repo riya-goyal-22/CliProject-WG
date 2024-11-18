@@ -1,9 +1,9 @@
 package models
 
 type LivingSince struct {
-	Days   int `json:"days"`
-	Months int `json:"months"`
-	Years  int `json:"years"`
+	Days   float64 `json:"days"`
+	Months float64 `json:"months"`
+	Years  float64 `json:"years"`
 }
 
 type Client struct {
@@ -11,6 +11,7 @@ type Client struct {
 	Password    string      `json:"password"`
 	City        string      `json:"city"`
 	LivingSince LivingSince `json:"living_since"`
+	Answer      string      `json:"security_answer"`
 }
 
 type RequestPost struct {

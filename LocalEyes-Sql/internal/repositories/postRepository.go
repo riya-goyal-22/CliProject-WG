@@ -2,10 +2,13 @@ package repositories
 
 import (
 	"database/sql"
+	"encoding/json"
+	"fmt"
 	_ "github.com/go-sql-driver/mysql"
 	"localEyes/config"
 	"localEyes/internal/models"
 	"localEyes/utils"
+	"strings"
 	"time"
 )
 
@@ -20,18 +23,35 @@ func NewMySQLPostRepository(Db *sql.DB) *MySQLPostRepository {
 }
 
 func (r *MySQLPostRepository) Create(post *models.Post) error {
-	columns := []string{"uuid", "post_id", "title", "type", "content", "likes", "created_at"}
+	columns := []string{"uuid", "post_id", "title", "type", "content", "likes", "created_at", "users_who_liked"}
 	query := config.InsertQuery(config.PostTable, columns)
+	emptyArray := []byte("[]")
 	//query := "INSERT INTO posts (user_id, title,type, content, likes,created_at) VALUES (?, ?, ?, ?, ?,?)"
-	_, err := r.DB.Exec(query, post.UId, post.PostId, post.Title, post.Type, post.Content, post.Likes, post.CreatedAt)
+	_, err := r.DB.Exec(query, post.UId, post.PostId, post.Title, post.Type, post.Content, post.Likes, post.CreatedAt, emptyArray)
 	return err
 }
 
-func (r *MySQLPostRepository) GetAllPosts() ([]*models.Post, error) {
-	columns := []string{"post_id", "uuid", "title", "type", "content", "likes", "created_at"}
+func (r *MySQLPostRepository) GetAllPosts(limit, offset int, search string, filter string) ([]*models.Post, error) {
+	columns := []string{"post_id", "uuid", "title", "type", "content", "likes", "created_at", "users_who_liked"}
 	query := config.SelectQuery(config.PostTable, "", "", columns)
-	//query := "SELECT post_id, uuid, title, type, content, likes, created_at FROM posts"
-	rows, err := r.DB.Query(query)
+	var conditions []string
+	var params []interface{}
+	if search != "" {
+		conditions = append(conditions, " (title LIKE CONCAT('%', ?, '%') OR content LIKE CONCAT('%', ?, '%'))")
+		params = append(params, search, search)
+	}
+	if filter != "" {
+		conditions = append(conditions, " type = ?")
+		params = append(params, filter)
+	}
+	if len(conditions) > 0 {
+		query = query + " WHERE" + strings.Join(conditions, " AND ")
+	}
+	query += " ORDER BY created_at DESC LIMIT ? OFFSET ?"
+	params = append(params, limit, offset)
+	fmt.Println(query)
+	fmt.Println(params)
+	rows, err := r.DB.Query(query, params...)
 	if err != nil {
 		return nil, err
 	}
@@ -46,7 +66,8 @@ func (r *MySQLPostRepository) GetAllPosts() ([]*models.Post, error) {
 	for rows.Next() {
 		var post models.Post
 		var createdAt string
-		if err := rows.Scan(&post.PostId, &post.UId, &post.Title, &post.Type, &post.Content, &post.Likes, &createdAt); err != nil {
+		var usersWhoLiked []byte
+		if err := rows.Scan(&post.PostId, &post.UId, &post.Title, &post.Type, &post.Content, &post.Likes, &createdAt, &usersWhoLiked); err != nil {
 			return nil, err
 		}
 		if createdAt != "" {
@@ -55,6 +76,12 @@ func (r *MySQLPostRepository) GetAllPosts() ([]*models.Post, error) {
 				return nil, err
 			}
 			post.CreatedAt = parsedTime
+		}
+		if usersWhoLiked != nil {
+			err := json.Unmarshal(usersWhoLiked, &post.Users)
+			if err != nil {
+				return nil, err
+			}
 		}
 		posts = append(posts, &post)
 	}
@@ -98,7 +125,7 @@ func (r *MySQLPostRepository) DeleteByUIdPId(uId, pId string) error {
 }
 
 func (r *MySQLPostRepository) GetPostsByFilter(filter string) ([]*models.Post, error) {
-	columns := []string{"post_id", "uuid", "title", "type", "content", "likes", "created_at"}
+	columns := []string{"post_id", "uuid", "title", "type", "content", "likes", "created_at", "users_who_liked"}
 	condition1 := "type"
 	query := config.SelectQuery(config.PostTable, condition1, "", columns)
 	//query := "SELECT post_id, uuid, title,type, content, likes,created_at FROM posts WHERE type = ?"
@@ -117,7 +144,8 @@ func (r *MySQLPostRepository) GetPostsByFilter(filter string) ([]*models.Post, e
 	for rows.Next() {
 		var post models.Post
 		var createdAt string
-		if err := rows.Scan(&post.PostId, &post.UId, &post.Title, &post.Type, &post.Content, &post.Likes, &createdAt); err != nil {
+		var usersWhoLiked []byte
+		if err := rows.Scan(&post.PostId, &post.UId, &post.Title, &post.Type, &post.Content, &post.Likes, &createdAt, &usersWhoLiked); err != nil {
 			return nil, err
 		}
 		if createdAt != "" {
@@ -127,6 +155,12 @@ func (r *MySQLPostRepository) GetPostsByFilter(filter string) ([]*models.Post, e
 			}
 			post.CreatedAt = parsedTime
 		}
+		if usersWhoLiked != nil {
+			err := json.Unmarshal(usersWhoLiked, &post.Users)
+			if err != nil {
+				return nil, err
+			}
+		}
 		posts = append(posts, &post)
 	}
 
@@ -135,7 +169,7 @@ func (r *MySQLPostRepository) GetPostsByFilter(filter string) ([]*models.Post, e
 
 func (r *MySQLPostRepository) GetPostsByUId(uId string) ([]*models.Post, error) {
 	condition1 := "uuid"
-	columns := []string{"post_id", "uuid", "title", "type", "content", "likes", "created_at"}
+	columns := []string{"post_id", "uuid", "title", "type", "content", "likes", "created_at", "users_who_liked"}
 	query := config.SelectQuery(config.PostTable, condition1, "", columns)
 	//query := "SELECT post_id, uuid, title,type, content, likes,created_at FROM posts WHERE uuid = ?"
 	rows, err := r.DB.Query(query, uId)
@@ -150,31 +184,38 @@ func (r *MySQLPostRepository) GetPostsByUId(uId string) ([]*models.Post, error) 
 	}(rows)
 
 	var posts []*models.Post
+	var usersWhoLiked []byte
 	for rows.Next() {
 		var post models.Post
-		if err := rows.Scan(&post.PostId, &post.UId, &post.Title, &post.Type, &post.Content, &post.Likes, &post.CreatedAt); err != nil {
+		if err := rows.Scan(&post.PostId, &post.UId, &post.Title, &post.Type, &post.Content, &post.Likes, &post.CreatedAt, &usersWhoLiked); err != nil {
 			return nil, err
+		}
+		if usersWhoLiked != nil {
+			err := json.Unmarshal(usersWhoLiked, &post.Users)
+			if err != nil {
+				return nil, err
+			}
 		}
 		posts = append(posts, &post)
 	}
-
 	return posts, nil
 }
 
 func (r *MySQLPostRepository) GetPostByPId(pId string) (*models.Post, error) {
-	columns := []string{"post_id", "uuid", "title", "type", "content", "likes", "created_at"}
+	columns := []string{"post_id", "uuid", "title", "type", "content", "likes", "created_at", "users_who_liked"}
 	condition1 := "post_id"
 	query := config.SelectQuery(config.PostTable, condition1, "", columns)
 	//query := "SELECT post_id, uuid, title,type, content, likes,created_at FROM posts WHERE post_id = ?"
 	var post models.Post
 	var createdAt string
+	var usersWhoLiked []byte
 	rows, err := r.DB.Query(query, pId)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 	for rows.Next() {
-		err := rows.Scan(&post.PostId, &post.UId, &post.Title, &post.Type, &post.Content, &post.Likes, &createdAt)
+		err := rows.Scan(&post.PostId, &post.UId, &post.Title, &post.Type, &post.Content, &post.Likes, &createdAt, &usersWhoLiked)
 		if err != nil {
 			return nil, err
 		}
@@ -185,6 +226,12 @@ func (r *MySQLPostRepository) GetPostByPId(pId string) (*models.Post, error) {
 			return nil, err
 		}
 		post.CreatedAt = parsedTime
+	}
+	if usersWhoLiked != nil {
+		err := json.Unmarshal(usersWhoLiked, &post.Users)
+		if err != nil {
+			return nil, err
+		}
 	}
 	return &post, nil
 }
@@ -208,12 +255,30 @@ func (r *MySQLPostRepository) UpdateUserPost(pId, uId, title, content string) er
 	return err
 }
 
-func (r *MySQLPostRepository) UpdateLike(pId string) error {
-	columns := "likes = likes+1"
+func (r *MySQLPostRepository) Like(uId, pId string) error {
+	columns := "likes = likes+1,users_who_liked = JSON_ARRAY_APPEND(users_who_liked, '$' , ?)"
 	condition1 := "post_id"
 	query := config.UpdateQueryWithValue(config.PostTable, condition1, "", columns)
 	//query := "UPDATE posts SET likes = likes+1 WHERE post_id = ?"
-	result, err := r.DB.Exec(query, pId)
+	result, err := r.DB.Exec(query, uId, pId)
+	if result != nil {
+		rowsAffected, err := result.RowsAffected()
+		if err != nil {
+			return err
+		}
+		if rowsAffected == 0 {
+			return utils.NoPost
+		}
+	}
+	return err
+}
+
+func (r *MySQLPostRepository) Dislike(uId, pId string) error {
+	columns := "likes = likes-1,users_who_liked = JSON_REMOVE(users_who_liked, JSON_UNQUOTE(JSON_SEARCH(users_who_liked, 'one', ?)))"
+	condition1 := "post_id"
+	query := config.UpdateQueryWithValue(config.PostTable, condition1, "", columns)
+	//query := "UPDATE posts SET likes = likes+1 WHERE post_id = ?"
+	result, err := r.DB.Exec(query, uId, pId)
 	if result != nil {
 		rowsAffected, err := result.RowsAffected()
 		if err != nil {

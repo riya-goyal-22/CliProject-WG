@@ -15,16 +15,16 @@ func NewAdminService(userRepo interfaces.UserRepository, postRepo interfaces.Pos
 	return &AdminService{UserRepo: userRepo, PostRepo: postRepo, QuesRepo: quesRepo}
 }
 
-func (s *AdminService) GetAllUsers() ([]*models.User, error) {
-	users, err := s.UserRepo.GetAllUsers()
+func (s *AdminService) GetAllUsers(limit, offset int, search string) ([]*models.User, error) {
+	users, err := s.UserRepo.GetAllUsers(limit, offset, search)
 	if err != nil {
 		return nil, err
 	}
 	return users, nil
 }
 
-func (s *AdminService) GetAllPosts() ([]*models.Post, error) {
-	posts, err := s.PostRepo.GetAllPosts()
+func (s *AdminService) GetAllPosts(limit, offset int, search, filter string) ([]*models.Post, error) {
+	posts, err := s.PostRepo.GetAllPosts(limit, offset, search, filter)
 	if err != nil {
 		return nil, err
 	}

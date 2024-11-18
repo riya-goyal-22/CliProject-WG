@@ -6,12 +6,13 @@ import (
 
 type PostRepository interface {
 	Create(post *models.Post) error
-	GetAllPosts() ([]*models.Post, error)
+	GetAllPosts(limit, offset int, search string, filter string) ([]*models.Post, error)
 	DeleteByPId(pId string) error
 	DeleteByUIdPId(uId string, pId string) error
 	GetPostsByFilter(filter string) ([]*models.Post, error)
 	GetPostsByUId(uId string) ([]*models.Post, error)
 	GetPostByPId(pId string) (*models.Post, error)
 	UpdateUserPost(pId string, uId string, title string, content string) error
-	UpdateLike(pId string) error
+	Like(uId string, pId string) error
+	Dislike(uId string, pId string) error
 }

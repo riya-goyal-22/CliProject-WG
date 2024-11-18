@@ -7,11 +7,12 @@ type Response struct {
 }
 
 type ResponseUser struct {
-	UId         string `json:"id"`
-	Username    string `json:"username"`
-	City        string `json:"city"`
-	LivingSince int    `json:"living_since"`
-	Tag         string `json:"tag"`
+	UId          string  `json:"id"`
+	Username     string  `json:"username"`
+	City         string  `json:"city"`
+	LivingSince  float64 `json:"living_since"`
+	Tag          string  `json:"tag"`
+	ActiveStatus bool    `json:"active_status"`
 }
 
 type ResponseQuestion struct {
@@ -24,11 +25,12 @@ type ResponseQuestion struct {
 }
 
 type ResponsePost struct {
-	PostId    string `json:"post_id"`
-	UId       string `json:"user_id"`
-	Title     string `json:"title"`
-	Type      string `json:"type"`
-	Content   string `json:"content"`
-	Likes     int    `json:"likes"`
-	CreatedAt string `json:"created_at"`
+	PostId    string   `json:"post_id"`
+	UId       string   `json:"user_id"`
+	Title     string   `json:"title"`
+	Type      string   `json:"type"`
+	Content   string   `json:"content"`
+	Likes     int      `json:"likes"`
+	CreatedAt string   `json:"created_at"`
+	Users     []string `json:"users"`
 }

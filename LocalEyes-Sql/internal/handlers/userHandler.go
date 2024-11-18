@@ -4,6 +4,7 @@ import (
 	_ "database/sql"
 	"encoding/json"
 	"errors"
+	"github.com/gorilla/mux"
 	"localEyes/internal/interfaces"
 	"localEyes/internal/models"
 	"localEyes/utils"
@@ -40,6 +41,19 @@ func (handler *UserHandler) SignUp(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
+	//password, err := utils.DecryptAES(client.Password)
+	//if err != nil {
+	//	fmt.Println(err)
+	//	w.WriteHeader(http.StatusInternalServerError)
+	//	response := utils.NewInternalServerError("Error decrypting password")
+	//	err = json.NewEncoder(w).Encode(response)
+	//	if err != nil {
+	//		utils.Logger.Error("ERROR: Error encoding response")
+	//	}
+	//	return
+	//
+	//}
+
 	if !utils.ValidatePassword(client.Password) {
 		w.WriteHeader(http.StatusBadRequest)
 		response := utils.NewBadRequestError("Password not strong")
@@ -49,9 +63,19 @@ func (handler *UserHandler) SignUp(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	var livingSinceInYears float64 = float64(client.LivingSince.Days/365) + float64(client.LivingSince.Months/12) + float64(client.LivingSince.Years)
-	tag := utils.SetTag(livingSinceInYears)
-	err = handler.service.Signup(client.Username, client.Password, int(livingSinceInYears), tag)
+	var livingSinceInYears = client.LivingSince.Days/365.0 + client.LivingSince.Months/12.0 + client.LivingSince.Years
+
+	//securityAnswer, err := utils.DecryptAES(client.Answer)
+	//if err != nil {
+	//	w.WriteHeader(http.StatusInternalServerError)
+	//	response := utils.NewBadRequestError("Error decrypting password")
+	//	err = json.NewEncoder(w).Encode(response)
+	//	if err != nil {
+	//		utils.Logger.Error("ERROR: Error encoding response")
+	//	}
+	//	return
+	//}
+	err = handler.service.Signup(client.Username, client.Password, livingSinceInYears, client.Answer)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		response := utils.NewInternalServerError("Error signing up")
@@ -86,6 +110,18 @@ func (handler *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
+	//password, err := utils.DecryptAES(client.Password)
+	//if err != nil {
+	//	fmt.Println(err)
+	//	w.WriteHeader(http.StatusInternalServerError)
+	//	response := utils.NewInternalServerError("Error decrypting password")
+	//	err = json.NewEncoder(w).Encode(response)
+	//	if err != nil {
+	//		utils.Logger.Error("ERROR: Error encoding response")
+	//	}
+	//	return
+	//}
+
 	user, err := handler.service.Login(client.Username, client.Password)
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
@@ -175,19 +211,25 @@ func (handler *UserHandler) ViewProfile(w http.ResponseWriter, r *http.Request) 
 	user, err := handler.service.GetUserById(id)
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
-		response := utils.NewUnauthorizedError("Unauthorized user")
+		response := utils.NewUnauthorizedError("Invalid token")
 		err = json.NewEncoder(w).Encode(response)
 		if err != nil {
 			utils.Logger.Error("ERROR: Error encoding response")
 		}
 		return
 	}
-	response := &models.ResponseUser{
-		UId:         user.UId,
-		Username:    user.Username,
-		City:        user.City,
-		LivingSince: user.DwellingAge,
-		Tag:         user.Tag,
+	responseUser := &models.ResponseUser{
+		UId:          user.UId,
+		Username:     user.Username,
+		City:         user.City,
+		LivingSince:  user.DwellingAge,
+		Tag:          user.Tag,
+		ActiveStatus: user.IsActive,
+	}
+	response := models.Response{
+		Data:    responseUser,
+		Code:    http.StatusOK,
+		Message: "User viewed successfully",
 	}
 	w.WriteHeader(http.StatusOK)
 	utils.Logger.Info("User viewed successfully")
@@ -244,4 +286,124 @@ func (handler *UserHandler) ViewNotifications(w http.ResponseWriter, r *http.Req
 		utils.Logger.Error("ERROR: Error encoding response")
 	}
 
+}
+
+func (handler *UserHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	var resetUser models.ResetPasswordUser
+	err := json.NewDecoder(r.Body).Decode(&resetUser)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		response := utils.NewBadRequestError("Invalid JSON body")
+		err = json.NewEncoder(w).Encode(response)
+		if err != nil {
+			utils.Logger.Error("ERROR: Error encoding response")
+		}
+		return
+	}
+	err = handler.service.PasswordReset(resetUser)
+	if errors.Is(err, utils.NoUser) || errors.Is(err, utils.InvalidAnswer) {
+		w.WriteHeader(http.StatusBadRequest)
+		response := utils.NewBadRequestError(err.Error())
+		err = json.NewEncoder(w).Encode(response)
+		if err != nil {
+			utils.Logger.Error("ERROR: Error encoding response")
+		}
+		return
+	} else {
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			response := utils.NewInternalServerError("Internal server error")
+			err = json.NewEncoder(w).Encode(response)
+			if err != nil {
+				utils.Logger.Error("ERROR: Error encoding response")
+			}
+			return
+		}
+	}
+	w.WriteHeader(http.StatusOK)
+	response := &models.Response{
+		Message: "Success",
+		Code:    http.StatusOK,
+	}
+	err = json.NewEncoder(w).Encode(response)
+	if err != nil {
+		utils.Logger.Error("ERROR: Error encoding response")
+	}
+}
+
+func (handler *UserHandler) GetUserById(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	id := mux.Vars(r)["user_id"]
+	user, err := handler.service.GetUserById(id)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		response := utils.NewInternalServerError("Error getting user")
+		err = json.NewEncoder(w).Encode(response)
+		if err != nil {
+			utils.Logger.Error("ERROR: Error encoding response")
+		}
+	}
+	responseUser := models.ResponseUser{
+		UId:         user.UId,
+		Username:    user.Username,
+		City:        user.City,
+		LivingSince: user.DwellingAge,
+		Tag:         user.Tag,
+	}
+	response := models.Response{
+		Data:    responseUser,
+		Code:    http.StatusOK,
+		Message: "Success",
+	}
+	w.WriteHeader(http.StatusOK)
+	err = json.NewEncoder(w).Encode(response)
+	if err != nil {
+		utils.Logger.Error("ERROR: Error encoding response")
+	}
+}
+
+func (handler *UserHandler) UpdateUserById(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	bearerToken := r.Header.Get("Authorization")
+	claims, err := utils.ExtractClaimsFunc(bearerToken)
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		response := utils.NewUnauthorizedError("Invalid token")
+		err = json.NewEncoder(w).Encode(response)
+		if err != nil {
+			utils.Logger.Error("ERROR: Error encoding response")
+		}
+		return
+	}
+	userId := claims["id"].(string)
+	var newUser models.Client
+	err = json.NewDecoder(r.Body).Decode(&newUser)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		response := utils.NewBadRequestError("Invalid JSON body")
+		err = json.NewEncoder(w).Encode(response)
+		if err != nil {
+			utils.Logger.Error("ERROR: Error encoding response")
+		}
+		return
+	}
+	err = handler.service.UpdateUser(userId, &newUser)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		response := utils.NewInternalServerError("Error updating user")
+		err = json.NewEncoder(w).Encode(response)
+		if err != nil {
+			utils.Logger.Error("ERROR: Error encoding response")
+		}
+	}
+	w.WriteHeader(http.StatusOK)
+	response := &models.Response{
+		Message: "Success",
+		Code:    http.StatusOK,
+	}
+	err = json.NewEncoder(w).Encode(response)
+	if err != nil {
+		utils.Logger.Error("ERROR: Error encoding response")
+	}
 }

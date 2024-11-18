@@ -563,47 +563,6 @@ func TestPostHandler_DisplayPosts_ErrorCases(t *testing.T) {
 	}
 }
 
-//func TestPostHandler_LikePost(t *testing.T) {
-//	ctrl := gomock.NewController(t)
-//	defer ctrl.Finish()
-//
-//	mockService := mock.NewMockPostServiceInterface(ctrl)
-//	handler := handlers.NewPostHandler(mockService)
-//
-//	postId := "1"
-//	req, err := http.NewRequest("POST", "/posts/"+postId+"/like", nil)
-//	if err != nil {
-//		t.Fatal(err)
-//	}
-//
-//	mockService.EXPECT().Like(postId).Return(nil)
-//
-//	rr := httptest.NewRecorder()
-//	router := mux.NewRouter()
-//	router.HandleFunc("/posts/{post_id}/like", handler.LikePost).Methods("POST")
-//
-//	router.ServeHTTP(rr, req)
-//
-//	if status := rr.Code; status != http.StatusOK {
-//		t.Errorf("handler returned wrong status code: got %v want %v", status, http.StatusOK)
-//	}
-//	expectedResponse := models.Response{
-//		Code:    http.StatusOK,
-//		Message: "Post liked successfully",
-//		Data:    nil,
-//	}
-//	var actualRes models.Response
-//	if err := json.Unmarshal(rr.Body.Bytes(), &actualRes); err != nil {
-//		t.Fatalf("failed to unmarshal actual response: %v", err)
-//	}
-//	if actualRes.Code != expectedResponse.Code {
-//		t.Errorf("handler returned wrong status code: got %v want %v", actualRes.Code, expectedResponse.Code)
-//	}
-//	if actualRes.Message != expectedResponse.Message {
-//		t.Errorf("handler returned wrong message: got %v want %v", actualRes.Message, expectedResponse.Message)
-//	}
-//}
-
 func TestPostHandler_LikePost(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
@@ -666,51 +625,6 @@ func TestPostHandler_LikePost(t *testing.T) {
 		t.Errorf("unexpected response: got %v", errorResponse)
 	}
 }
-
-//func TestPostHandler_DisplayPostById(t *testing.T) {
-//	ctrl := gomock.NewController(t)
-//	defer ctrl.Finish()
-//
-//	mockService := mock.NewMockPostServiceInterface(ctrl)
-//	handler := handlers.NewPostHandler(mockService)
-//
-//	postId := "1"
-//	posts := &models.PostWithQuestions{
-//		PostId: "1", UId: "userId", Title: "Post 1", Content: "Content 1", Type: "travel", Likes: 0,
-//	}
-//	mockService.EXPECT().GivePostById(postId).Return(posts, nil)
-//
-//	req, err := http.NewRequest("GET", "/posts/"+postId, nil)
-//	if err != nil {
-//		t.Fatal(err)
-//	}
-//
-//	rr := httptest.NewRecorder()
-//	router := mux.NewRouter()
-//	router.HandleFunc("/posts/{post_id}", handler.DisplayPostById).Methods("GET")
-//
-//	router.ServeHTTP(rr, req)
-//
-//	if status := rr.Code; status != http.StatusOK {
-//		t.Errorf("handler returned wrong status code: got %v want %v", status, http.StatusOK)
-//	}
-//	expectedResponse := models.Response{
-//		Code:    http.StatusOK,
-//		Message: "Successfully displayed post",
-//		Data:    posts,
-//	}
-//	var actualRes models.Response
-//	if err := json.Unmarshal(rr.Body.Bytes(), &actualRes); err != nil {
-//		t.Fatalf("failed to unmarshal actual response: %v", err)
-//	}
-//	if actualRes.Code != expectedResponse.Code {
-//		t.Errorf("handler returned wrong status code: got %v want %v", actualRes.Code, expectedResponse.Code)
-//	}
-//	if actualRes.Message != expectedResponse.Message {
-//		t.Errorf("handler returned wrong message: got %v want %v", actualRes.Message, expectedResponse.Message)
-//	}
-//
-//}
 
 func TestPostHandler_DisplayPostById(t *testing.T) {
 	ctrl := gomock.NewController(t)

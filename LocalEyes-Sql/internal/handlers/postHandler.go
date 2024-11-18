@@ -10,6 +10,7 @@ import (
 	"localEyes/utils"
 	"net/http"
 	"strconv"
+	"time"
 )
 
 type PostHandler struct {
@@ -23,11 +24,14 @@ func NewPostHandler(service interfaces.PostServiceInterface) *PostHandler {
 }
 
 func (handler *PostHandler) DisplayPosts(w http.ResponseWriter, r *http.Request) {
+	time.Sleep(1 * time.Second)
 	queryParams := r.URL.Query()
 	filter := queryParams.Get("filter")
-	limitString := queryParams.Get("limit")
+	search := queryParams.Get("search")
+	limit, _ := strconv.Atoi(queryParams.Get("limit"))
+	offset, _ := strconv.Atoi(queryParams.Get("offset"))
 	if filter == "" {
-		posts, err := handler.service.GiveAllPosts()
+		posts, err := handler.service.GiveAllPosts(limit, offset, search, filter)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			response := utils.NewInternalServerError("Error displaying posts")
@@ -47,13 +51,8 @@ func (handler *PostHandler) DisplayPosts(w http.ResponseWriter, r *http.Request)
 				Content:   post.Content,
 				Likes:     post.Likes,
 				CreatedAt: post.CreatedAt.Format("2006-01-02 15:04:05"),
+				Users:     post.Users,
 			})
-		}
-		if limitString != "" {
-			limit, _ := strconv.Atoi(limitString)
-			if limit < len(responseData) {
-				responseData = responseData[:limit]
-			}
 		}
 		response := models.Response{
 			Data:    responseData,
@@ -68,7 +67,7 @@ func (handler *PostHandler) DisplayPosts(w http.ResponseWriter, r *http.Request)
 		}
 		return
 	} else if filter == "food" || filter == "shopping" || filter == "other" || filter == "travel" {
-		posts, err := handler.service.GiveFilteredPosts(filter)
+		posts, err := handler.service.GiveAllPosts(limit, offset, search, filter)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			response := utils.NewInternalServerError("Error displaying posts in filter" + err.Error())
@@ -88,13 +87,8 @@ func (handler *PostHandler) DisplayPosts(w http.ResponseWriter, r *http.Request)
 				Content:   post.Content,
 				Likes:     post.Likes,
 				CreatedAt: post.CreatedAt.Format("2006-01-02 15:04:05"),
+				Users:     post.Users,
 			})
-		}
-		if limitString != "" {
-			limit, _ := strconv.Atoi(limitString)
-			if limit < len(responseData) {
-				responseData = responseData[:limit]
-			}
 		}
 		response := models.Response{
 			Data:    responseData,
@@ -153,6 +147,7 @@ func (handler *PostHandler) DisplayUserPosts(w http.ResponseWriter, r *http.Requ
 			Content:   post.Content,
 			Likes:     post.Likes,
 			CreatedAt: post.CreatedAt.Format("2006-01-02 15:04:05"),
+			Users:     post.Users,
 		})
 	}
 	response := models.Response{
@@ -227,6 +222,7 @@ func (handler *PostHandler) CreatePost(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 }
+
 func (handler *PostHandler) UpdatePost(w http.ResponseWriter, r *http.Request) {
 	bearerToken := r.Header.Get("Authorization")
 	postId := mux.Vars(r)["post_id"]
@@ -345,7 +341,19 @@ func (handler *PostHandler) DeletePost(w http.ResponseWriter, r *http.Request) {
 
 func (handler *PostHandler) LikePost(w http.ResponseWriter, r *http.Request) {
 	postId := mux.Vars(r)["post_id"]
-	err := handler.service.Like(postId)
+	bearerToken := r.Header.Get("Authorization")
+	claims, err := utils.ExtractClaimsFunc(bearerToken)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		response := utils.NewUnauthorizedError("Error extracting claims")
+		err = json.NewEncoder(w).Encode(response)
+		if err != nil {
+			utils.Logger.Error("ERROR: Error encoding response")
+		}
+		return
+	}
+	userId := claims["id"].(string)
+	err = handler.service.Like(userId, postId)
 	if err != nil {
 		if errors.Is(err, utils.NoPost) {
 			w.WriteHeader(http.StatusNotFound)
@@ -368,6 +376,51 @@ func (handler *PostHandler) LikePost(w http.ResponseWriter, r *http.Request) {
 	utils.Logger.Info("Successfully liked post")
 	response := &models.Response{
 		Message: "Post liked successfully",
+		Code:    http.StatusOK,
+	}
+	err = json.NewEncoder(w).Encode(response)
+	if err != nil {
+		utils.Logger.Error("Error encoding response:" + err.Error())
+	}
+}
+
+func (handler *PostHandler) DislikePost(w http.ResponseWriter, r *http.Request) {
+	postId := mux.Vars(r)["post_id"]
+	bearerToken := r.Header.Get("Authorization")
+	claims, err := utils.ExtractClaimsFunc(bearerToken)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		response := utils.NewUnauthorizedError("Error extracting claims")
+		err = json.NewEncoder(w).Encode(response)
+		if err != nil {
+			utils.Logger.Error("ERROR: Error encoding response")
+		}
+		return
+	}
+	userId := claims["id"].(string)
+	err = handler.service.DislikePost(userId, postId)
+	if err != nil {
+		if errors.Is(err, utils.NoPost) {
+			w.WriteHeader(http.StatusNotFound)
+			response := utils.NewNotFoundError(err.Error())
+			err := json.NewEncoder(w).Encode(response)
+			if err != nil {
+				utils.Logger.Error("Error encoding response:" + err.Error())
+			}
+			return
+		}
+		w.WriteHeader(http.StatusInternalServerError)
+		response := utils.NewInternalServerError("Error disliking post")
+		err := json.NewEncoder(w).Encode(response)
+		if err != nil {
+			utils.Logger.Error("Error encoding response:" + err.Error())
+		}
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	utils.Logger.Info("Successfully disliked post")
+	response := &models.Response{
+		Message: "Post disliked successfully",
 		Code:    http.StatusOK,
 	}
 	err = json.NewEncoder(w).Encode(response)

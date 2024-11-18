@@ -28,6 +28,17 @@ func SelectQuery(tableName, condition1, condition2 string, columns []string) str
 	return query
 }
 
+func SelectQueryWithValue(tableName string, columns []string) string {
+	colNames := strings.Join(columns, ", ")
+	query := fmt.Sprintf(SelectWithValues, colNames, tableName)
+	return query
+}
+
+func CountQuery(tableName string) string {
+	query := fmt.Sprintf(Count, tableName)
+	return query
+}
+
 func DeleteQuery(tableName, condition1, condition2 string) string {
 	if condition2 == "" {
 		query := fmt.Sprintf(Delete, tableName, condition1)

@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/gorilla/mux"
 	"localEyes/internal/interfaces"
 	"localEyes/internal/models"
@@ -20,10 +21,13 @@ func NewAdminHandler(service interfaces.AdminServiceInterface) *AdminHandler {
 }
 
 func (handler *AdminHandler) DisplayUsers(w http.ResponseWriter, r *http.Request) {
-	users, err := handler.service.GetAllUsers()
 	queryParams := r.URL.Query()
-	limitString := queryParams.Get("limit")
+	limit, _ := strconv.Atoi(queryParams.Get("limit"))
+	offset, _ := strconv.Atoi(queryParams.Get("offset"))
+	search := queryParams.Get("search")
+	users, err := handler.service.GetAllUsers(limit, offset, search)
 	if err != nil {
+		fmt.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		response := utils.NewInternalServerError("Error getting all users")
 		err = json.NewEncoder(w).Encode(response)
@@ -35,18 +39,13 @@ func (handler *AdminHandler) DisplayUsers(w http.ResponseWriter, r *http.Request
 	var responseData []models.ResponseUser
 	for _, user := range users {
 		responseData = append(responseData, models.ResponseUser{
-			UId:         user.UId,
-			Username:    user.Username,
-			City:        user.City,
-			LivingSince: user.DwellingAge,
-			Tag:         user.Tag,
+			UId:          user.UId,
+			Username:     user.Username,
+			City:         user.City,
+			LivingSince:  user.DwellingAge,
+			Tag:          user.Tag,
+			ActiveStatus: user.IsActive,
 		})
-	}
-	if limitString != "" {
-		limit, _ := strconv.Atoi(limitString)
-		if limit < len(responseData) {
-			responseData = responseData[:limit]
-		}
 	}
 	response := &models.Response{
 		Data:    responseData,
@@ -62,7 +61,12 @@ func (handler *AdminHandler) DisplayUsers(w http.ResponseWriter, r *http.Request
 }
 
 func (handler *AdminHandler) DisplayPosts(w http.ResponseWriter, r *http.Request) {
-	posts, err := handler.service.GetAllPosts()
+	queryParams := r.URL.Query()
+	limit, _ := strconv.Atoi(queryParams.Get("limit"))
+	offset, _ := strconv.Atoi(queryParams.Get("offset"))
+	filter := queryParams.Get("filter")
+	search := queryParams.Get("search")
+	posts, err := handler.service.GetAllPosts(limit, offset, search, filter)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		response := utils.NewInternalServerError("Error getting all posts")
