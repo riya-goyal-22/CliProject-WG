@@ -29,7 +29,7 @@ func init() {
 func main() {
 	defer config.CloseDBClient()
 	router := mux.NewRouter()
-	userService := services.NewUserService(repositories.NewMySQLUserRepository(dbClient))
+	userService := services.NewUserService(repositories.NewMySQLUserRepository(dbClient), repositories.NewOtpRepository())
 	postService := services.NewPostService(repositories.NewMySQLPostRepository(dbClient), repositories.NewMySQLUserRepository(dbClient), repositories.NewMySQLQuestionRepository(dbClient))
 	questionService := services.NewQuestionService(repositories.NewMySQLQuestionRepository(dbClient))
 
@@ -44,7 +44,8 @@ func main() {
 
 	router.HandleFunc("/signup", userHandler.SignUp).Methods("POST")
 	router.HandleFunc("/login", userHandler.Login).Methods("POST")
-	router.HandleFunc("/forget-password", userHandler.ResetPassword).Methods("POST")
+	router.HandleFunc("/forget-password", userHandler.SendOtp).Methods("POST")
+	router.HandleFunc("/reset-password", userHandler.ResetPassword).Methods("POST")
 
 	apiRouter := router.PathPrefix("/api").Subrouter()
 	apiRouter.Use(middlewares.AuthenticationMiddleware)

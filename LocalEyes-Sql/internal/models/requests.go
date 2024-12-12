@@ -11,7 +11,7 @@ type Client struct {
 	Password    string      `json:"password"`
 	City        string      `json:"city"`
 	LivingSince LivingSince `json:"living_since"`
-	Answer      string      `json:"security_answer"`
+	Email       string      `json:"email"`
 }
 
 type RequestPost struct {

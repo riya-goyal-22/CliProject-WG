@@ -25,6 +25,7 @@ func SelectQuery(tableName, condition1, condition2 string, columns []string) str
 	if condition1 != "" && condition2 != "" {
 		query = fmt.Sprintf(SelectWith2Condition, colNames, tableName, condition1, condition2)
 	}
+	fmt.Println(query)
 	return query
 }
 

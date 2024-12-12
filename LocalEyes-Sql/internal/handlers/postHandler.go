@@ -10,7 +10,6 @@ import (
 	"localEyes/utils"
 	"net/http"
 	"strconv"
-	"time"
 )
 
 type PostHandler struct {
@@ -24,7 +23,6 @@ func NewPostHandler(service interfaces.PostServiceInterface) *PostHandler {
 }
 
 func (handler *PostHandler) DisplayPosts(w http.ResponseWriter, r *http.Request) {
-	time.Sleep(1 * time.Second)
 	queryParams := r.URL.Query()
 	filter := queryParams.Get("filter")
 	search := queryParams.Get("search")

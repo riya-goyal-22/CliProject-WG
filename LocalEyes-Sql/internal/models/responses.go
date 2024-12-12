@@ -13,6 +13,7 @@ type ResponseUser struct {
 	LivingSince  float64 `json:"living_since"`
 	Tag          string  `json:"tag"`
 	ActiveStatus bool    `json:"active_status"`
+	Email        string  `json:"email"`
 }
 
 type ResponseQuestion struct {
