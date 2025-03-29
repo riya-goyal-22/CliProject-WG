@@ -3,10 +3,11 @@ package repositories
 import (
 	"database/sql"
 	"encoding/json"
-	"errors"
+	"fmt"
 	"localEyes/config"
 	"localEyes/internal/models"
 	"localEyes/utils"
+	"strings"
 )
 
 type MySQLUserRepository struct {
@@ -21,21 +22,33 @@ func NewMySQLUserRepository(Db *sql.DB) *MySQLUserRepository {
 
 func (r *MySQLUserRepository) Create(user *models.User) error {
 	notification, err := json.Marshal(user.Notification)
-	columns := []string{"username", "password", "is_active", "city", "dwelling_age", "tag", "notification"}
+	columns := []string{"username", "password", "is_active", "city", "dwelling_age", "tag", "notification", "email"}
 	query := config.InsertQuery(config.UserTable, columns)
-	//query := "INSERT INTO users (username, password, is_active, city, dwelling_age, tag, notification) VALUES (?, ?, ?, ?, ?, ?, ?)"
-	_, err = r.DB.Exec(query, user.Username, user.Password, user.IsActive, user.City, user.DwellingAge, user.Tag, notification)
+	_, err = r.DB.Exec(query, user.Username, user.Password, user.IsActive, user.City, user.DwellingAge, user.Tag, notification, user.Email)
 	return err
 }
 
-func (r *MySQLUserRepository) FindByUId(UId int) (*models.User, error) {
+func (r *MySQLUserRepository) FindByUId(uId string) (*models.User, error) {
 	var user models.User
-	columns := []string{"id", "username", "password", "is_active", "city", "dwelling_age", "tag", "notification"}
-	condition := "id"
+	columns := []string{"uuid", "username", "password", "is_active", "city", "dwelling_age", "tag", "notification", "email"}
+	condition := "uuid"
 	query := config.SelectQuery(config.UserTable, condition, "", columns)
-	//query := "SELECT id, username, password, is_active, city, dwelling_age, tag, notification FROM users WHERE id = ?"
 	var notification []byte
-	err := r.DB.QueryRow(query, UId).Scan(&user.UId, &user.Username, &user.Password, &user.IsActive, &user.City, &user.DwellingAge, &user.Tag, &notification)
+	err := r.DB.QueryRow(query, uId).Scan(&user.UId, &user.Username, &user.Password, &user.IsActive, &user.City, &user.DwellingAge, &user.Tag, &notification, &user.Email)
+	err = json.Unmarshal(notification, &user.Notification)
+	if err != nil {
+		return nil, err
+	}
+	return &user, err
+}
+
+func (r *MySQLUserRepository) FindByUserMail(mail string) (*models.User, error) {
+	var user models.User
+	columns := []string{"uuid", "username", "password", "is_active", "city", "dwelling_age", "tag", "notification", "email"}
+	condition := "email"
+	query := config.SelectQuery(config.UserTable, condition, "", columns)
+	var notification []byte
+	err := r.DB.QueryRow(query, mail).Scan(&user.UId, &user.Username, &user.Password, &user.IsActive, &user.City, &user.DwellingAge, &user.Tag, &notification, &user.Email)
 	err = json.Unmarshal(notification, &user.Notification)
 	if err != nil {
 		return nil, err
@@ -45,12 +58,11 @@ func (r *MySQLUserRepository) FindByUId(UId int) (*models.User, error) {
 
 func (r *MySQLUserRepository) FindByUsername(username string) (*models.User, error) {
 	var user models.User
-	columns := []string{"id", "username", "password", "is_active", "city", "dwelling_age", "tag", "notification"}
+	columns := []string{"uuid", "username", "password", "is_active", "city", "dwelling_age", "tag", "notification", "email"}
 	condition1 := "username"
 	query := config.SelectQuery(config.UserTable, condition1, "", columns)
-	//query := "SELECT id, username, password, is_active, city, dwelling_age, tag, notification FROM users WHERE username = ?"
 	var notification []byte
-	err := r.DB.QueryRow(query, username).Scan(&user.UId, &user.Username, &user.Password, &user.IsActive, &user.City, &user.DwellingAge, &user.Tag, &notification)
+	err := r.DB.QueryRow(query, username).Scan(&user.UId, &user.Username, &user.Password, &user.IsActive, &user.City, &user.DwellingAge, &user.Tag, &notification, &user.Email)
 	err = json.Unmarshal(notification, &user.Notification)
 	if err != nil {
 		return nil, err
@@ -60,13 +72,12 @@ func (r *MySQLUserRepository) FindByUsername(username string) (*models.User, err
 
 func (r *MySQLUserRepository) FindByUsernamePassword(username, password string) (*models.User, error) {
 	var user models.User
-	columns := []string{"id", "username", "password", "is_active", "city", "dwelling_age", "tag", "notification"}
+	columns := []string{"uuid", "username", "password", "is_active", "city", "dwelling_age", "tag", "notification", "email"}
 	condition1 := "username"
 	condition2 := "password"
 	query := config.SelectQuery(config.UserTable, condition1, condition2, columns)
-	//query := "SELECT id, username, password, is_active, city, dwelling_age, tag, notification FROM users WHERE username = ? AND password = ?"
 	var notification []byte
-	err := r.DB.QueryRow(query, username, password).Scan(&user.UId, &user.Username, &user.Password, &user.IsActive, &user.City, &user.DwellingAge, &user.Tag, &notification)
+	err := r.DB.QueryRow(query, username, password).Scan(&user.UId, &user.Username, &user.Password, &user.IsActive, &user.City, &user.DwellingAge, &user.Tag, &notification, &user.Email)
 	err = json.Unmarshal(notification, &user.Notification)
 	if err != nil {
 		return nil, err
@@ -74,33 +85,31 @@ func (r *MySQLUserRepository) FindByUsernamePassword(username, password string) 
 	return &user, err
 }
 
-func (r *MySQLUserRepository) FindAdminByUsernamePassword(username, password string) (*models.Admin, error) {
-	var admin models.Admin
-	columns := []string{"id", "username", "password"}
-	condition1 := "username"
-	condition2 := "password"
-	query := config.SelectQuery(config.UserTable, condition1, condition2, columns)
-	//query := "SELECT id, username, password FROM users WHERE username = ? AND password = ?"
-	row := r.DB.QueryRow(query, username, password)
-	if row != nil {
-		err := row.Scan(&admin.User.UId, &admin.User.Username, &admin.User.Password)
-		return &admin, err
-	}
-	return nil, errors.New("not found")
-}
-
-func (r *MySQLUserRepository) GetAllUsers() ([]*models.User, error) {
-	columns := []string{"id", "username", "password", "is_active", "city", "dwelling_age", "tag", "notification"}
+func (r *MySQLUserRepository) GetAllUsers(limit, offset int, search string) ([]*models.User, error) {
+	columns := []string{"uuid", "username", "password", "is_active", "city", "dwelling_age", "tag", "notification", "email"}
 	query := config.SelectQuery(config.UserTable, "", "", columns)
-	//query := "SELECT id, username, password, is_active, city, dwelling_age, tag, notification FROM users"
-	rows, err := r.DB.Query(query)
+	var conditions []string
+	var params []interface{}
+	if search != "" {
+		conditions = append(conditions, " (username LIKE CONCAT('%', ?, '%'))")
+		params = append(params, search)
+	}
+	if len(conditions) > 0 {
+		query = query + " WHERE" + strings.Join(conditions, " AND ")
+	}
+	query += " LIMIT ? OFFSET ?"
+	params = append(params, limit, offset)
+	fmt.Println(query)
+	fmt.Println(params)
+
+	rows, err := r.DB.Query(query, params...)
 	if err != nil {
 		return nil, err
 	}
 	defer func(rows *sql.Rows) {
 		err := rows.Close()
 		if err != nil {
-			utils.Logger.Println("ERROR: Error closing rows:", err)
+			utils.Logger.Error("ERROR: Error closing rows:" + err.Error())
 		}
 	}(rows)
 
@@ -108,7 +117,7 @@ func (r *MySQLUserRepository) GetAllUsers() ([]*models.User, error) {
 	for rows.Next() {
 		var user models.User
 		var notification []byte
-		if err := rows.Scan(&user.UId, &user.Username, &user.Password, &user.IsActive, &user.City, &user.DwellingAge, &user.Tag, &notification); err != nil {
+		if err := rows.Scan(&user.UId, &user.Username, &user.Password, &user.IsActive, &user.City, &user.DwellingAge, &user.Tag, &notification, &user.Email); err != nil {
 			return nil, err
 		}
 		err = json.Unmarshal(notification, &user.Notification)
@@ -120,57 +129,62 @@ func (r *MySQLUserRepository) GetAllUsers() ([]*models.User, error) {
 	return users, nil
 }
 
-func (r *MySQLUserRepository) DeleteByUId(UId int) error {
-	condition1 := "id"
-	query := config.DeleteQuery(config.UserTable, condition1, "")
-	//query := "DELETE FROM users WHERE id = ?"
-	result, err := r.DB.Exec(query, UId)
+func (r *MySQLUserRepository) DeleteByUId(uId string) error {
+	condition1 := "uuid"
+	condition2 := "username!"
+	query := config.DeleteQuery(config.UserTable, condition1, condition2)
+	result, err := r.DB.Exec(query, uId, "admin")
 	if result != nil {
 		affectedRows, err := result.RowsAffected()
 		if err != nil {
 			return err
 		}
 		if affectedRows == 0 {
-			return errors.New(config.Red + "No user exist with this id" + config.Reset)
+			return utils.NoUser
 		}
 	}
 	return err
 }
 
-func (r *MySQLUserRepository) UpdateActiveStatus(UId int, status bool) error {
-	condition1 := "id"
+func (r *MySQLUserRepository) UpdateActiveStatus(uId string, status bool) error {
+	condition1 := "uuid"
 	columns := []string{"is_active"}
 	query := config.UpdateQuery(config.UserTable, condition1, "", columns)
-	//query := "UPDATE users SET is_active = ? WHERE id = ?"
-	result, err := r.DB.Exec(query, status, UId)
+	result, err := r.DB.Exec(query, status, uId)
 	if result != nil {
 		affectedRows, err := result.RowsAffected()
 		if err != nil {
 			return err
 		}
 		if affectedRows == 0 {
-			return errors.New(config.Red + "No inActive user exist with this id" + config.Reset)
+			return utils.NoUser
 		}
 	}
 	return err
 }
 
-func (r *MySQLUserRepository) PushNotification(UId int, title string) error {
+func (r *MySQLUserRepository) PushNotification(uId, title string) error {
 	columns := "notification= JSON_ARRAY_APPEND(notification, '$' ,?)"
-	condition1 := "id!=?"
-	condition2 := "username!=?"
+	condition1 := "NOT uuid"
+	condition2 := "NOT username"
 	query := config.UpdateQueryWithValue(config.UserTable, condition1, condition2, columns)
-	//query := "UPDATE users SET notification= JSON_ARRAY_APPEND(notification, '$' ,?) WHERE id != ?"
-	notification := "New post: " + title + "\n"
-	_, err := r.DB.Exec(query, notification, UId, "admin")
+	notification := title
+	_, err := r.DB.Exec(query, notification, uId, "admin")
 	return err
 }
 
-func (r *MySQLUserRepository) ClearNotification(UId int) error {
+func (r *MySQLUserRepository) ClearNotification(uId string) error {
 	columns := []string{"notification"}
-	condition1 := "id"
+	condition1 := "uuid"
 	query := config.UpdateQuery(config.UserTable, condition1, "", columns)
-	//query := "UPDATE users SET notification =?  WHERE id = ?"
-	_, err := r.DB.Exec(query, "[]", UId)
+	_, err := r.DB.Exec(query, "[]", uId)
+	return err
+}
+
+func (r *MySQLUserRepository) UpdateUser(user *models.User) error {
+	columns := []string{"password", "city", "dwelling_age", "tag"}
+	condition1 := "uuid"
+	query := config.UpdateQuery(config.UserTable, condition1, "", columns)
+	_, err := r.DB.Exec(query, user.Password, user.City, user.DwellingAge, user.Tag, user.UId)
 	return err
 }

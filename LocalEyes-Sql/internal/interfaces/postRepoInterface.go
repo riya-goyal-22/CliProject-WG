@@ -6,13 +6,13 @@ import (
 
 type PostRepository interface {
 	Create(post *models.Post) error
-	GetAllPosts() ([]*models.Post, error)
-	DeleteByPId(PId int) error
-	DeleteByUId(UId int) error
+	GetAllPosts(limit, offset int, search string, filter string) ([]*models.Post, error)
+	DeleteByPId(pId string) error
+	DeleteByUIdPId(uId string, pId string) error
 	GetPostsByFilter(filter string) ([]*models.Post, error)
-	GetPostsByUId(UId int) ([]*models.Post, error)
-	UpdateUserPost(PId int, UId int, title string, content string) error
-	UpdateLike(PId int) error
-	DeleteByUIdPId(UId, PId int) error
-	GetPostsByPId(PId int) ([]*models.Post, error)
+	GetPostsByUId(uId string) ([]*models.Post, error)
+	GetPostByPId(pId string) (*models.Post, error)
+	UpdateUserPost(pId string, uId string, title string, content string) error
+	Like(uId string, pId string) error
+	Dislike(uId string, pId string) error
 }

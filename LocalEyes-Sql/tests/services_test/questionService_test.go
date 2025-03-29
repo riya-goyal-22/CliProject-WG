@@ -16,29 +16,29 @@ func TestQuestionService_AskQuestion(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockRepo := mocks.NewMockQuestionRepository(ctrl)
+	mockRepo := mock.NewMockQuestionRepository(ctrl)
 	questionService := services.NewQuestionService(mockRepo)
 
 	tests := []struct {
 		name    string
-		userId  int
-		postId  int
+		userId  string
+		postId  string
 		content string
 		mockErr error
 		wantErr bool
 	}{
 		{
 			name:    "successful question creation",
-			userId:  1,
-			postId:  1,
+			userId:  "1",
+			postId:  "1",
 			content: "Is this place good?",
 			mockErr: nil,
 			wantErr: false,
 		},
 		{
 			name:    "repo returns error on create",
-			userId:  1,
-			postId:  1,
+			userId:  "1",
+			postId:  "1",
 			content: "Is this place good?",
 			mockErr: errors.New("DB error"),
 			wantErr: true,
@@ -64,24 +64,24 @@ func TestQuestionService_DeleteQuesByPId(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockRepo := mocks.NewMockQuestionRepository(ctrl)
+	mockRepo := mock.NewMockQuestionRepository(ctrl)
 	questionService := services.NewQuestionService(mockRepo)
 
 	tests := []struct {
 		name    string
-		postId  int
+		postId  string
 		mockErr error
 		wantErr bool
 	}{
 		{
 			name:    "successful deletion",
-			postId:  1,
+			postId:  "1",
 			mockErr: nil,
 			wantErr: false,
 		},
 		{
 			name:    "repo returns error on delete",
-			postId:  1,
+			postId:  "1",
 			mockErr: errors.New("DB error"),
 			wantErr: true,
 		},
@@ -106,26 +106,26 @@ func TestQuestionService_GetPostQuestions(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockRepo := mocks.NewMockQuestionRepository(ctrl)
+	mockRepo := mock.NewMockQuestionRepository(ctrl)
 	questionService := services.NewQuestionService(mockRepo)
 
 	tests := []struct {
 		name       string
-		postId     int
+		postId     string
 		mockResult []*models.Question
 		mockErr    error
 		wantErr    bool
 	}{
 		{
 			name:       "successful retrieval",
-			postId:     1,
-			mockResult: []*models.Question{{PostId: 1, Text: "Question 1"}},
+			postId:     "1",
+			mockResult: []*models.Question{{PostId: "1", Text: "Question 1"}},
 			mockErr:    nil,
 			wantErr:    false,
 		},
 		{
 			name:       "repo returns error",
-			postId:     1,
+			postId:     "1",
 			mockResult: nil,
 			mockErr:    errors.New("DB error"),
 			wantErr:    true,
@@ -153,26 +153,26 @@ func TestQuestionService_AddAnswer(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockRepo := mocks.NewMockQuestionRepository(ctrl)
+	mockRepo := mock.NewMockQuestionRepository(ctrl)
 	questionService := services.NewQuestionService(mockRepo)
 
 	tests := []struct {
 		name    string
-		qId     int
+		qId     string
 		answer  string
 		mockErr error
 		wantErr bool
 	}{
 		{
 			name:    "successful update",
-			qId:     1,
+			qId:     "1",
 			answer:  "Yes, it's great!",
 			mockErr: nil,
 			wantErr: false,
 		},
 		{
 			name:    "repo returns error on update",
-			qId:     1,
+			qId:     "1",
 			answer:  "Yes, it's great!",
 			mockErr: errors.New("DB error"),
 			wantErr: true,
@@ -198,11 +198,11 @@ func TestDeleteUserQues_Success(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockRepo := mocks.NewMockQuestionRepository(ctrl)
+	mockRepo := mock.NewMockQuestionRepository(ctrl)
 	service := services.NewQuestionService(mockRepo)
 
-	QId := 1
-	UId := 123
+	QId := "1"
+	UId := "123"
 
 	// Setup expectations
 	mockRepo.EXPECT().DeleteByQIdUId(QId, UId).Return(nil)
@@ -218,11 +218,11 @@ func TestDeleteUserQues_Error(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockRepo := mocks.NewMockQuestionRepository(ctrl)
+	mockRepo := mock.NewMockQuestionRepository(ctrl)
 	service := services.NewQuestionService(mockRepo)
 
-	QId := 1
-	UId := 123
+	QId := "1"
+	UId := "123"
 	expectedError := errors.New("error deleting question")
 
 	// Setup expectations

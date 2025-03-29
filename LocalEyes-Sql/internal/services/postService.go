@@ -1,22 +1,33 @@
 package services
 
 import (
+	"database/sql"
+	"errors"
+	"fmt"
 	"localEyes/internal/interfaces"
 	"localEyes/internal/models"
+	"localEyes/utils"
 	"time"
 )
 
 type PostService struct {
-	repo interfaces.PostRepository
+	repo         interfaces.PostRepository
+	userRepo     interfaces.UserRepository
+	questionRepo interfaces.QuestionRepository
 }
 
-func NewPostService(repo interfaces.PostRepository) *PostService {
-	return &PostService{repo: repo}
+func NewPostService(repo interfaces.PostRepository, userRepo interfaces.UserRepository, questionRepo interfaces.QuestionRepository) *PostService {
+	return &PostService{
+		repo:         repo,
+		userRepo:     userRepo,
+		questionRepo: questionRepo,
+	}
 }
 
-func (s *PostService) CreatePost(userId int, title, content, postType string) error {
+func (s *PostService) CreatePost(userId string, title, content, postType string) error {
 	post := &models.Post{
 		UId:       userId,
+		PostId:    utils.GenerateRandomId(),
 		Title:     title,
 		Content:   content,
 		Type:      postType,
@@ -24,10 +35,17 @@ func (s *PostService) CreatePost(userId int, title, content, postType string) er
 		Likes:     0,
 	}
 	err := s.repo.Create(post)
-	return err
+	if err != nil {
+		return err
+	}
+	err = s.userRepo.PushNotification(userId, post.Title)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
-func (s *PostService) UpdateMyPost(postId, userId int, title, content string) error {
+func (s *PostService) UpdateMyPost(postId, userId, title, content string) error {
 	err := s.repo.UpdateUserPost(postId, userId, title, content)
 	if err != nil {
 		return err
@@ -35,32 +53,33 @@ func (s *PostService) UpdateMyPost(postId, userId int, title, content string) er
 	return nil
 }
 
-func (s *PostService) GiveAllPosts() ([]*models.Post, error) {
-	posts, err := s.repo.GetAllPosts()
+func (s *PostService) GiveAllPosts(limit, offset int, search, filter string) ([]*models.Post, error) {
+	posts, err := s.repo.GetAllPosts(limit, offset, search, filter)
+	if err != nil {
+		fmt.Println("Error New vali:", err.Error())
+		return nil, err
+	}
+	return posts, nil
+}
+
+func (s *PostService) GiveMyPosts(uId string) ([]*models.Post, error) {
+	posts, err := s.repo.GetPostsByUId(uId)
 	if err != nil {
 		return nil, err
 	}
 	return posts, nil
 }
 
-func (s *PostService) GiveMyPosts(UId int) ([]*models.Post, error) {
-	posts, err := s.repo.GetPostsByUId(UId)
-	if err != nil {
-		return nil, err
-	}
-	return posts, nil
-}
-
-func (s *PostService) DeleteMyPost(UId, PId int) error {
-	err := s.repo.DeleteByUIdPId(UId, PId)
+func (s *PostService) DeleteMyPost(uId, pId string) error {
+	err := s.repo.DeleteByUIdPId(uId, pId)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (s *PostService) Like(PId int) error {
-	err := s.repo.UpdateLike(PId)
+func (s *PostService) Like(uId, pId string) error {
+	err := s.repo.Like(uId, pId)
 	if err != nil {
 		return err
 	}
@@ -75,10 +94,48 @@ func (s *PostService) GiveFilteredPosts(filterType string) ([]*models.Post, erro
 	return posts, nil
 }
 
-func (s *PostService) PostIdExist(PId int) (bool, error) {
-	posts, err := s.repo.GetPostsByPId(PId)
+func (s *PostService) GivePostById(pId string) (*models.PostWithQuestions, error) {
+	post, err := s.repo.GetPostByPId(pId)
 	if err != nil {
-		return false, err
+		return nil, err
 	}
-	return len(posts) > 0, nil
+	postWithQuestion := &models.PostWithQuestions{
+		PostId:    post.PostId,
+		UId:       post.UId,
+		Type:      post.Type,
+		Title:     post.Title,
+		Content:   post.Content,
+		Likes:     post.Likes,
+		CreatedAt: post.CreatedAt,
+		Users:     post.Users,
+		Questions: nil,
+	}
+	questions, err := s.questionRepo.GetQuestionsByPId(pId)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return postWithQuestion, nil
+		}
+		return nil, err
+	}
+	var postQuestions []models.ResponseQuestion
+	if questions != nil {
+		for _, question := range questions {
+			postQuestion := models.ResponseQuestion{
+				QId:     question.QId,
+				Text:    question.Text,
+				Replies: question.Replies,
+			}
+			postQuestions = append(postQuestions, postQuestion)
+		}
+	}
+	postWithQuestion.Questions = postQuestions
+	return postWithQuestion, nil
+}
+
+func (s *PostService) DislikePost(uId, pId string) error {
+	err := s.repo.Dislike(uId, pId)
+	if err != nil {
+		return err
+	}
+	return nil
 }

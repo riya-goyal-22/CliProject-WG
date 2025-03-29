@@ -1,8 +1,6 @@
 package services
 
 import (
-	"errors"
-	"localEyes/config"
 	"localEyes/internal/interfaces"
 	"localEyes/internal/models"
 )
@@ -17,25 +15,16 @@ func NewAdminService(userRepo interfaces.UserRepository, postRepo interfaces.Pos
 	return &AdminService{UserRepo: userRepo, PostRepo: postRepo, QuesRepo: quesRepo}
 }
 
-func (s *AdminService) Login(password string) (*models.Admin, error) {
-	hashedPassword := HashPassword(password)
-	user, err := s.UserRepo.FindAdminByUsernamePassword("admin", hashedPassword)
-	if err != nil {
-		return nil, errors.New(config.Red + "Invalid username or password" + config.Reset)
-	}
-	return user, nil
-}
-
-func (s *AdminService) GetAllUsers() ([]*models.User, error) {
-	users, err := s.UserRepo.GetAllUsers()
+func (s *AdminService) GetAllUsers(limit, offset int, search string) ([]*models.User, error) {
+	users, err := s.UserRepo.GetAllUsers(limit, offset, search)
 	if err != nil {
 		return nil, err
 	}
 	return users, nil
 }
 
-func (s *AdminService) GetAllPosts() ([]*models.Post, error) {
-	posts, err := s.PostRepo.GetAllPosts()
+func (s *AdminService) GetAllPosts(limit, offset int, search, filter string) ([]*models.Post, error) {
+	posts, err := s.PostRepo.GetAllPosts(limit, offset, search, filter)
 	if err != nil {
 		return nil, err
 	}
@@ -50,9 +39,18 @@ func (s *AdminService) GetAllQuestions() ([]*models.Question, error) {
 	return questions, nil
 }
 
-func (s *AdminService) DeleteUser(UId int) error {
-	err1 := s.UserRepo.DeleteByUId(UId)
-	err2 := s.PostRepo.DeleteByUId(UId)
+func (s *AdminService) DeleteUser(uId string) error {
+	err1 := s.UserRepo.DeleteByUId(uId)
+	//err2 := s.PostRepo.DeleteByUId(UId)  //post not deleted when a user is deleted
+	if err1 != nil {
+		return err1
+	}
+	return nil
+}
+
+func (s *AdminService) DeletePost(pId string) error {
+	err1 := s.PostRepo.DeleteByPId(pId)
+	err2 := s.QuesRepo.DeleteByPId(pId)
 	if err1 != nil {
 		return err1
 	} else if err2 != nil {
@@ -61,27 +59,16 @@ func (s *AdminService) DeleteUser(UId int) error {
 	return nil
 }
 
-func (s *AdminService) DeletePost(PId int) error {
-	err1 := s.PostRepo.DeleteByPId(PId)
-	err2 := s.QuesRepo.DeleteByPId(PId)
-	if err1 != nil {
-		return err1
-	} else if err2 != nil {
-		return err2
-	}
-	return nil
-}
-
-func (s *AdminService) DeleteQuestion(QId int) error {
-	err := s.QuesRepo.DeleteByQId(QId)
+func (s *AdminService) DeleteQuestion(qId string) error {
+	err := s.QuesRepo.DeleteByQId(qId)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (s *AdminService) ReActivate(UId int) error {
-	err := s.UserRepo.UpdateActiveStatus(UId, true)
+func (s *AdminService) ReActivate(uId string) error {
+	err := s.UserRepo.UpdateActiveStatus(uId, true)
 	if err != nil {
 		return err
 	}
